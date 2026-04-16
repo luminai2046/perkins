@@ -1,224 +1,423 @@
-import { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
-import { Moon, Sun, Home, Settings, User, Menu, X } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Download, Upload, Type, Image, Palette, Settings, Plus, Trash2 } from 'lucide-react'
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const canvasRef = useRef(null)
+  const [text, setText] = useState('Enter your text here...')
+  const [selectedFont, setSelectedFont] = useState('Arial')
+  const [fontSize, setFontSize] = useState(24)
+  const [lineHeight, setLineHeight] = useState(1.5)
+  const [letterSpacing, setLetterSpacing] = useState(0)
+  const [fontWeight, setFontWeight] = useState('normal')
+  const [fontStyle, setFontStyle] = useState('normal')
+  const [padding, setPadding] = useState(40)
+  const [selectedBackground, setSelectedBackground] = useState('#ffffff')
+  const [uploadedFonts, setUploadedFonts] = useState([])
+  const [uploadedBackgrounds, setUploadedBackgrounds] = useState([])
+  const [showFontUpload, setShowFontUpload] = useState(false)
+  const [showBackgroundUpload, setShowBackgroundUpload] = useState(false)
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode)
-    document.documentElement.classList.toggle('dark')
+  // Default backgrounds
+  const defaultBackgrounds = [
+    '#ffffff',
+    '#f8f9fa',
+    '#e9ecef',
+    '#fef3c7',
+    '#dbeafe',
+    '#fce7f3',
+    '#d1fae5',
+    '#fed7aa'
+  ]
+
+  useEffect(() => {
+    renderCanvas()
+  }, [text, selectedFont, fontSize, lineHeight, letterSpacing, fontWeight, fontStyle, padding, selectedBackground])
+
+  const renderCanvas = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const ctx = canvas.getContext('2d')
+    const width = 1080
+    const height = 1440
+    
+    canvas.width = width
+    canvas.height = height
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height)
+    
+    // Draw background
+    if (selectedBackground.startsWith('#')) {
+      ctx.fillStyle = selectedBackground
+      ctx.fillRect(0, 0, width, height)
+    } else {
+      // Handle image background
+      const img = new Image()
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, width, height)
+        drawText(ctx, width, height)
+      }
+      img.src = selectedBackground
+      return
+    }
+    
+    drawText(ctx, width, height)
+  }
+
+  const drawText = (ctx, width, height) => {
+    ctx.fillStyle = '#000000'
+    ctx.font = `${fontStyle} ${fontWeight} ${fontSize * 4}px ${selectedFont}`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+    
+    const maxWidth = width - (padding * 2)
+    const lineHeightPx = fontSize * 4 * lineHeight
+    const letterSpacingPx = letterSpacing * 4
+    
+    const lines = wrapText(ctx, text, maxWidth, letterSpacingPx)
+    let y = padding
+    
+    lines.forEach(line => {
+      let x = padding
+      for (let i = 0; i < line.length; i++) {
+        ctx.fillText(line[i], x, y)
+        x += ctx.measureText(line[i]).width + letterSpacingPx
+      }
+      y += lineHeightPx
+    })
+  }
+
+  const wrapText = (ctx, text, maxWidth, letterSpacing) => {
+    const words = text.split(' ')
+    const lines = []
+    let currentLine = ''
+    
+    for (let word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word
+      const testWidth = ctx.measureText(testLine).width + (testLine.length - 1) * letterSpacing
+      
+      if (testWidth <= maxWidth) {
+        currentLine = testLine
+      } else {
+        if (currentLine) {
+          lines.push(currentLine)
+          currentLine = word
+        } else {
+          lines.push(word)
+        }
+      }
+    }
+    
+    if (currentLine) {
+      lines.push(currentLine)
+    }
+    
+    return lines
+  }
+
+  const exportImage = () => {
+    const canvas = canvasRef.current
+    const link = document.createElement('a')
+    link.download = 'perkins-export.png'
+    link.href = canvas.toDataURL()
+    link.click()
+  }
+
+  const handleFontUpload = (e) => {
+    const files = Array.from(e.target.files)
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const fontName = file.name.replace(/\.[^/.]+$/, '')
+        const fontUrl = event.target.result
+        
+        // Create font face
+        const fontFace = new FontFace(fontName, `url(${fontUrl})`)
+        fontFace.load().then(() => {
+          document.fonts.add(fontFace)
+          setUploadedFonts(prev => [...prev, { name: fontName, url: fontUrl }])
+        })
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const handleBackgroundUpload = (e) => {
+    const files = Array.from(e.target.files)
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setUploadedBackgrounds(prev => [...prev, { name: file.name, url: event.target.result }])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const deleteFont = (fontName) => {
+    setUploadedFonts(prev => prev.filter(font => font.name !== fontName))
+  }
+
+  const deleteBackground = (bgName) => {
+    setUploadedBackgrounds(prev => prev.filter(bg => bg.name !== bgName))
   }
 
   return (
-    <Router>
-      <div className={`min-h-screen bg-background text-foreground ${darkMode ? 'dark' : ''}`}>
-        {/* Header */}
-        <header className="border-b border-border bg-card">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 rounded-lg hover:bg-accent transition-colors"
-              >
-                {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-              </button>
-              <h1 className="text-2xl font-bold text-primary">Web App</h1>
-            </div>
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 rounded-lg hover:bg-accent transition-colors"
-            >
-              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-          </div>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-7xl mx-auto">
+        <header className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Perkins</h1>
+          <p className="text-gray-600 mt-2">Transform text into beautiful images</p>
         </header>
 
-        <div className="flex">
-          {/* Sidebar */}
-          <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-0`}>
-            <nav className="p-4 space-y-2">
-              <Link
-                to="/"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <Home size={18} />
-                <span>Home</span>
-              </Link>
-              <Link
-                to="/profile"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <User size={18} />
-                <span>Profile</span>
-              </Link>
-              <Link
-                to="/settings"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-accent transition-colors"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <Settings size={18} />
-                <span>Settings</span>
-              </Link>
-            </nav>
-          </aside>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Canvas Preview */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="mb-4 flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Preview</h2>
+                <button
+                  onClick={exportImage}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Download size={16} />
+                  Export Image
+                </button>
+              </div>
+              <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                <canvas
+                  ref={canvasRef}
+                  className="w-full h-auto"
+                  style={{ maxHeight: '600px', objectFit: 'contain' }}
+                />
+              </div>
+            </div>
 
-          {/* Main Content */}
-          <main className="flex-1 container mx-auto px-4 py-8">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-            </Routes>
-          </main>
-        </div>
+            {/* Text Input */}
+            <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
+              <h2 className="text-xl font-semibold mb-4">Text Content</h2>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter your text here..."
+              />
+            </div>
+          </div>
 
-        {/* Mobile Sidebar Overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-      </div>
-    </Router>
-  )
-}
+          {/* Controls */}
+          <div className="space-y-6">
+            {/* Font Controls */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <Type size={20} />
+                  Typography
+                </h2>
+                <button
+                  onClick={() => setShowFontUpload(!showFontUpload)}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Upload size={16} />
+                </button>
+              </div>
 
-function HomePage() {
-  return (
-    <div className="space-y-8">
-      <div className="text-center space-y-4">
-        <h2 className="text-4xl font-bold text-primary">Welcome to Your Web App</h2>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          A modern, responsive web application built with React, TailwindCSS, and shadcn/ui components.
-        </p>
-      </div>
+              {showFontUpload && (
+                <div className="mb-4 p-3 border border-gray-200 rounded-lg">
+                  <input
+                    type="file"
+                    accept=".ttf,.otf,.woff,.woff2"
+                    multiple
+                    onChange={handleFontUpload}
+                    className="text-sm"
+                  />
+                </div>
+              )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow">
-          <h3 className="text-xl font-semibold mb-2 text-primary">Modern Design</h3>
-          <p className="text-muted-foreground">
-            Clean, minimalist interface with a focus on user experience and accessibility.
-          </p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow">
-          <h3 className="text-xl font-semibold mb-2 text-primary">Responsive Layout</h3>
-          <p className="text-muted-foreground">
-            Fully responsive design that works seamlessly on desktop, tablet, and mobile devices.
-          </p>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-6 hover:shadow-lg transition-shadow">
-          <h3 className="text-xl font-semibold mb-2 text-primary">Dark Mode</h3>
-          <p className="text-muted-foreground">
-            Toggle between light and dark themes for comfortable viewing in any environment.
-          </p>
-        </div>
-      </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Font Family</label>
+                  <select
+                    value={selectedFont}
+                    onChange={(e) => setSelectedFont(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Courier New">Courier New</option>
+                    {uploadedFonts.map(font => (
+                      <option key={font.name} value={font.name}>{font.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-      <div className="bg-card border border-border rounded-lg p-6">
-        <h3 className="text-xl font-semibold mb-4 text-primary">Getting Started</h3>
-        <div className="space-y-3">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold">1</div>
-            <span>Navigate through the sidebar to explore different sections</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold">2</div>
-            <span>Toggle dark mode using the button in the header</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-semibold">3</div>
-            <span>Customize the application to fit your needs</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Font Size</label>
+                  <input
+                    type="range"
+                    min="12"
+                    max="48"
+                    value={fontSize}
+                    onChange={(e) => setFontSize(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="text-sm text-gray-600">{fontSize}px</div>
+                </div>
 
-function ProfilePage() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-primary">Profile</h2>
-      <div className="bg-card border border-border rounded-lg p-6">
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="w-20 h-20 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-2xl font-semibold">
-            JD
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold">John Doe</h3>
-            <p className="text-muted-foreground">john.doe@example.com</p>
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
-            <input
-              type="text"
-              defaultValue="John Doe"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              defaultValue="john.doe@example.com"
-              className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-            Save Changes
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Font Weight</label>
+                  <select
+                    value={fontWeight}
+                    onChange={(e) => setFontWeight(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="bold">Bold</option>
+                    <option value="light">Light</option>
+                  </select>
+                </div>
 
-function SettingsPage() {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-primary">Settings</h2>
-      <div className="bg-card border border-border rounded-lg p-6 space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Preferences</h3>
-          <div className="space-y-3">
-            <label className="flex items-center space-x-3">
-              <input type="checkbox" className="rounded" />
-              <span>Enable notifications</span>
-            </label>
-            <label className="flex items-center space-x-3">
-              <input type="checkbox" className="rounded" />
-              <span>Auto-save drafts</span>
-            </label>
-            <label className="flex items-center space-x-3">
-              <input type="checkbox" className="rounded" />
-              <span>Show keyboard shortcuts</span>
-            </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Font Style</label>
+                  <select
+                    value={fontStyle}
+                    onChange={(e) => setFontStyle(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="italic">Italic</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Line Height</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={lineHeight}
+                    onChange={(e) => setLineHeight(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="text-sm text-gray-600">{lineHeight}</div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Letter Spacing</label>
+                  <input
+                    type="range"
+                    min="-2"
+                    max="10"
+                    step="0.5"
+                    value={letterSpacing}
+                    onChange={(e) => setLetterSpacing(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="text-sm text-gray-600">{letterSpacing}px</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Background Controls */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <Palette size={20} />
+                  Background
+                </h2>
+                <button
+                  onClick={() => setShowBackgroundUpload(!showBackgroundUpload)}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Upload size={16} />
+                </button>
+              </div>
+
+              {showBackgroundUpload && (
+                <div className="mb-4 p-3 border border-gray-200 rounded-lg">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleBackgroundUpload}
+                    className="text-sm"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Solid Colors</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {defaultBackgrounds.map(color => (
+                      <button
+                        key={color}
+                        onClick={() => setSelectedBackground(color)}
+                        className={`w-full h-10 rounded-lg border-2 transition-all ${
+                          selectedBackground === color ? 'border-blue-500' : 'border-gray-300'
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {uploadedBackgrounds.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Custom Images</label>
+                    <div className="space-y-2">
+                      {uploadedBackgrounds.map(bg => (
+                        <div key={bg.name} className="flex items-center gap-2">
+                          <button
+                            onClick={() => setSelectedBackground(bg.url)}
+                            className={`flex-1 h-10 rounded border-2 transition-all ${
+                              selectedBackground === bg.url ? 'border-blue-500' : 'border-gray-300'
+                            }`}
+                            style={{ 
+                              backgroundImage: `url(${bg.url})`,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center'
+                            }}
+                          />
+                          <button
+                            onClick={() => deleteBackground(bg.name)}
+                            className="p-1 text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Layout Controls */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
+                <Settings size={20} />
+                Layout
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Padding</label>
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    value={padding}
+                    onChange={(e) => setPadding(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="text-sm text-gray-600">{padding}px</div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Language</h3>
-          <select className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary">
-            <option>English</option>
-            <option>Spanish</option>
-            <option>French</option>
-            <option>German</option>
-          </select>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Time Zone</h3>
-          <select className="w-full px-3 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary">
-            <option>UTC-08:00 Pacific Time</option>
-            <option>UTC-05:00 Eastern Time</option>
-            <option>UTC+00:00 GMT</option>
-            <option>UTC+08:00 China Standard Time</option>
-          </select>
         </div>
       </div>
     </div>
