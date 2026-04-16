@@ -8,13 +8,13 @@ function App() {
   const loadSettings = () => {
     const savedFont = localStorage.getItem('perkins-selectedFont') || 'Arial'
     const savedFontSize = parseInt(localStorage.getItem('perkins-fontSize')) || 14
-    const savedLineHeight = parseFloat(localStorage.getItem('perkins-lineHeight')) || 1.8
+    const savedLineHeight = parseFloat(localStorage.getItem('perkins-lineHeight')) || 1.7
     const savedLetterSpacing = parseFloat(localStorage.getItem('perkins-letterSpacing')) || 0
     const savedFontWeight = localStorage.getItem('perkins-fontWeight') || 'normal'
     const savedFontStyle = localStorage.getItem('perkins-fontStyle') || 'normal'
     const savedPadding = parseInt(localStorage.getItem('perkins-padding')) || 72
     const savedBackground = localStorage.getItem('perkins-selectedBackground') || '#f3f4f6'
-    const savedText = localStorage.getItem('perkins-text') || 'Enter your text here...'
+    const savedText = localStorage.getItem('perkins-text') || "Here's to the crazy ones. The misfits. The rebels. The troublemakers. The round pegs in the square holes. The ones who see things differently. They're not fond of rules. And they have no respect for the status quo. You can quote them, disagree with them, glorify or vilify them. About the only thing you can't do is ignore them. Because they change things. They push the human race forward. And while some may see them as the crazy ones, we see genius. Because the people who are crazy enough to think they can change the world, are the ones who do."
     const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]')
     const savedBackgrounds = JSON.parse(localStorage.getItem('perkins-uploadedBackgrounds') || '[]')
     
@@ -373,7 +373,10 @@ function App() {
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-gray-700">Size</label>
+                    <span className="text-xs text-gray-600">{fontSize}px</span>
+                  </div>
                   <input
                     type="range"
                     min="8"
@@ -382,7 +385,6 @@ function App() {
                     onChange={(e) => setFontSize(Number(e.target.value))}
                     className="w-full"
                   />
-                  <div className="text-xs text-gray-600">{fontSize}px</div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
@@ -412,22 +414,27 @@ function App() {
 
             {/* Spacing Controls (Row) */}
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Line Height</label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-gray-700">Line Height</label>
+                    <span className="text-xs text-gray-600">{lineHeight}</span>
+                  </div>
                   <input
                     type="range"
                     min="1"
                     max="3"
-                    step="0.1"
+                    step="0.5"
                     value={lineHeight}
                     onChange={(e) => setLineHeight(Number(e.target.value))}
                     className="w-full"
                   />
-                  <div className="text-xs text-gray-600">{lineHeight}</div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Letter Spacing</label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-gray-700">Letter Spacing</label>
+                    <span className="text-xs text-gray-600">{letterSpacing}px</span>
+                  </div>
                   <input
                     type="range"
                     min="-2"
@@ -437,24 +444,21 @@ function App() {
                     onChange={(e) => setLetterSpacing(Number(e.target.value))}
                     className="w-full"
                   />
-                  <div className="text-xs text-gray-600">{letterSpacing}px</div>
                 </div>
-              </div>
-            </div>
-
-            {/* Layout Padding */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Padding</label>
-                <input
-                  type="range"
-                  min="10"
-                  max="150"
-                  value={padding}
-                  onChange={(e) => setPadding(Number(e.target.value))}
-                  className="w-full"
-                />
-                <div className="text-xs text-gray-600">{padding}px</div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-gray-700">Padding</label>
+                    <span className="text-xs text-gray-600">{padding}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="150"
+                    value={padding}
+                    onChange={(e) => setPadding(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
 
