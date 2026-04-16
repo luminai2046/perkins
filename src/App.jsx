@@ -3,22 +3,83 @@ import { Download, Upload, Type, Image, Palette, Settings, Plus, Trash2 } from '
 
 function App() {
   const canvasRef = useRef(null)
-  const [text, setText] = useState('Enter your text here...')
-  const [selectedFont, setSelectedFont] = useState('Arial')
-  const [fontSize, setFontSize] = useState(24)
-  const [lineHeight, setLineHeight] = useState(1.5)
-  const [letterSpacing, setLetterSpacing] = useState(0)
-  const [fontWeight, setFontWeight] = useState('normal')
-  const [fontStyle, setFontStyle] = useState('normal')
-  const [padding, setPadding] = useState(40)
-  const [selectedBackground, setSelectedBackground] = useState('#ffffff')
-  const [uploadedFonts, setUploadedFonts] = useState([])
-  const [uploadedBackgrounds, setUploadedBackgrounds] = useState([])
+  
+  // Load saved settings from localStorage
+  const loadSettings = () => {
+    const savedFont = localStorage.getItem('perkins-selectedFont') || 'Arial'
+    const savedFontSize = parseInt(localStorage.getItem('perkins-fontSize')) || 14
+    const savedLineHeight = parseFloat(localStorage.getItem('perkins-lineHeight')) || 1.8
+    const savedLetterSpacing = parseFloat(localStorage.getItem('perkins-letterSpacing')) || 0
+    const savedFontWeight = localStorage.getItem('perkins-fontWeight') || 'normal'
+    const savedFontStyle = localStorage.getItem('perkins-fontStyle') || 'normal'
+    const savedPadding = parseInt(localStorage.getItem('perkins-padding')) || 72
+    const savedBackground = localStorage.getItem('perkins-selectedBackground') || '#f3f4f6'
+    const savedText = localStorage.getItem('perkins-text') || 'Enter your text here...'
+    const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]')
+    const savedBackgrounds = JSON.parse(localStorage.getItem('perkins-uploadedBackgrounds') || '[]')
+    
+    return {
+      selectedFont: savedFont,
+      fontSize: savedFontSize,
+      lineHeight: savedLineHeight,
+      letterSpacing: savedLetterSpacing,
+      fontWeight: savedFontWeight,
+      fontStyle: savedFontStyle,
+      padding: savedPadding,
+      selectedBackground: savedBackground,
+      text: savedText,
+      uploadedFonts: savedFonts,
+      uploadedBackgrounds: savedBackgrounds
+    }
+  }
+  
+  const savedSettings = loadSettings()
+  
+  const [text, setText] = useState(savedSettings.text)
+  const [selectedFont, setSelectedFont] = useState(savedSettings.selectedFont)
+  const [fontSize, setFontSize] = useState(savedSettings.fontSize)
+  const [lineHeight, setLineHeight] = useState(savedSettings.lineHeight)
+  const [letterSpacing, setLetterSpacing] = useState(savedSettings.letterSpacing)
+  const [fontWeight, setFontWeight] = useState(savedSettings.fontWeight)
+  const [fontStyle, setFontStyle] = useState(savedSettings.fontStyle)
+  const [padding, setPadding] = useState(savedSettings.padding)
+  const [selectedBackground, setSelectedBackground] = useState(savedSettings.selectedBackground)
+  const [uploadedFonts, setUploadedFonts] = useState(savedSettings.uploadedFonts)
+  const [uploadedBackgrounds, setUploadedBackgrounds] = useState(savedSettings.uploadedBackgrounds)
   const [showFontUpload, setShowFontUpload] = useState(false)
   const [showBackgroundUpload, setShowBackgroundUpload] = useState(false)
+  
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('perkins-selectedFont', selectedFont)
+    localStorage.setItem('perkins-fontSize', fontSize.toString())
+    localStorage.setItem('perkins-lineHeight', lineHeight.toString())
+    localStorage.setItem('perkins-letterSpacing', letterSpacing.toString())
+    localStorage.setItem('perkins-fontWeight', fontWeight)
+    localStorage.setItem('perkins-fontStyle', fontStyle)
+    localStorage.setItem('perkins-padding', padding.toString())
+    localStorage.setItem('perkins-selectedBackground', selectedBackground)
+    localStorage.setItem('perkins-text', text)
+    localStorage.setItem('perkins-uploadedFonts', JSON.stringify(uploadedFonts))
+    localStorage.setItem('perkins-uploadedBackgrounds', JSON.stringify(uploadedBackgrounds))
+  }, [selectedFont, fontSize, lineHeight, letterSpacing, fontWeight, fontStyle, padding, selectedBackground, text, uploadedFonts, uploadedBackgrounds])
+  
+  // Load fonts from localStorage on mount
+  useEffect(() => {
+    const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]')
+    savedFonts.forEach(font => {
+      const fontFace = new FontFace(font.name, `url(${font.url})`)
+      fontFace.load().then(() => {
+        document.fonts.add(fontFace)
+      }).catch(err => {
+        console.warn('Failed to load font:', font.name, err)
+      })
+    })
+  }, [])
 
   // Default backgrounds
   const defaultBackgrounds = [
+    '#f3f4f6', // Light gray (default)
     '#ffffff',
     '#f8f9fa',
     '#e9ecef',
@@ -228,67 +289,70 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        <header className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Perkins</h1>
-          <p className="text-gray-600 mt-2">Transform text into beautiful images</p>
-        </header>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm border-b">
+        <div className="px-6 py-4">
+          <h1 className="text-2xl font-bold text-gray-900">Perkins</h1>
+          <p className="text-gray-600 text-sm">Transform text into beautiful images</p>
+        </div>
+      </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Canvas Preview */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="mb-4 flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Preview</h2>
-                <button
-                  onClick={exportImage}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Download size={16} />
-                  Export Image
-                </button>
-              </div>
-              <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
-                <canvas
-                  ref={canvasRef}
-                  className="w-full h-auto"
-                  style={{ maxHeight: '600px', objectFit: 'contain' }}
-                />
-              </div>
+      <div className="flex h-screen pt-16">
+        {/* Left: Preview */}
+        <div className="w-1/2 p-6 border-r bg-white">
+          <div className="h-full flex flex-col">
+            <div className="mb-4 flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Preview</h2>
+              <button
+                onClick={exportImage}
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Download size={14} />
+                Export
+              </button>
             </div>
-
-            {/* Text Input */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mt-6">
-              <h2 className="text-xl font-semibold mb-4">Text Content</h2>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter your text here..."
+            <div className="flex-1 border-2 border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+              <canvas
+                ref={canvasRef}
+                className="w-full h-full object-contain"
               />
             </div>
           </div>
+        </div>
 
-          {/* Controls */}
-          <div className="space-y-6">
-            {/* Font Controls */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <Type size={20} />
-                  Typography
-                </h2>
+        {/* Right: Controls */}
+        <div className="w-1/2 p-6 overflow-y-auto bg-gray-50">
+          <div className="space-y-6 max-w-2xl mx-auto">
+            
+            {/* Text Input */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-semibold mb-3">Text Content</h3>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                style={{ minHeight: '120px', maxHeight: '300px' }}
+                placeholder="Enter your text here..."
+              />
+            </div>
+
+            {/* Font Selection */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Type size={18} />
+                  Fonts
+                </h3>
                 <button
                   onClick={() => setShowFontUpload(!showFontUpload)}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <Upload size={16} />
+                  <Upload size={14} />
                 </button>
               </div>
 
               {showFontUpload && (
-                <div className="mb-4 p-3 border border-gray-200 rounded-lg">
+                <div className="mb-3 p-2 border border-gray-200 rounded-lg">
                   <input
                     type="file"
                     accept=".ttf,.otf,.woff,.woff2"
@@ -299,63 +363,68 @@ function App() {
                 </div>
               )}
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Font Family</label>
-                  <select
-                    value={selectedFont}
-                    onChange={(e) => setSelectedFont(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="Arial">Arial</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Verdana">Verdana</option>
-                    <option value="Courier New">Courier New</option>
-                    {uploadedFonts.map(font => (
-                      <option key={font.name} value={font.name}>{font.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <select
+                value={selectedFont}
+                onChange={(e) => setSelectedFont(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="Arial">Arial</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Courier New">Courier New</option>
+                {uploadedFonts.map(font => (
+                  <option key={font.name} value={font.name}>{font.name}</option>
+                ))}
+              </select>
+            </div>
 
+            {/* Typography Controls (Row) */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-semibold mb-3">Typography</h3>
+              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Font Size</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
                   <input
                     type="range"
-                    min="12"
-                    max="48"
+                    min="8"
+                    max="32"
                     value={fontSize}
                     onChange={(e) => setFontSize(Number(e.target.value))}
                     className="w-full"
                   />
-                  <div className="text-sm text-gray-600">{fontSize}px</div>
+                  <div className="text-xs text-gray-600">{fontSize}px</div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Font Weight</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
                   <select
                     value={fontWeight}
                     onChange={(e) => setFontWeight(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="normal">Normal</option>
                     <option value="bold">Bold</option>
                     <option value="light">Light</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Font Style</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Style</label>
                   <select
                     value={fontStyle}
                     onChange={(e) => setFontStyle(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full p-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="normal">Normal</option>
                     <option value="italic">Italic</option>
                   </select>
                 </div>
+              </div>
+            </div>
 
+            {/* Spacing Controls (Row) */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-semibold mb-3">Spacing</h3>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Line Height</label>
                   <input
@@ -367,9 +436,8 @@ function App() {
                     onChange={(e) => setLineHeight(Number(e.target.value))}
                     className="w-full"
                   />
-                  <div className="text-sm text-gray-600">{lineHeight}</div>
+                  <div className="text-xs text-gray-600">{lineHeight}</div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Letter Spacing</label>
                   <input
@@ -381,28 +449,48 @@ function App() {
                     onChange={(e) => setLetterSpacing(Number(e.target.value))}
                     className="w-full"
                   />
-                  <div className="text-sm text-gray-600">{letterSpacing}px</div>
+                  <div className="text-xs text-gray-600">{letterSpacing}px</div>
                 </div>
               </div>
             </div>
 
-            {/* Background Controls */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <Palette size={20} />
+            {/* Layout Padding */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
+                <Settings size={18} />
+                Layout
+              </h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Padding</label>
+                <input
+                  type="range"
+                  min="10"
+                  max="150"
+                  value={padding}
+                  onChange={(e) => setPadding(Number(e.target.value))}
+                  className="w-full"
+                />
+                <div className="text-xs text-gray-600">{padding}px</div>
+              </div>
+            </div>
+
+            {/* Background Selection */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Palette size={18} />
                   Background
-                </h2>
+                </h3>
                 <button
                   onClick={() => setShowBackgroundUpload(!showBackgroundUpload)}
-                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <Upload size={16} />
+                  <Upload size={14} />
                 </button>
               </div>
 
               {showBackgroundUpload && (
-                <div className="mb-4 p-3 border border-gray-200 rounded-lg">
+                <div className="mb-3 p-2 border border-gray-200 rounded-lg">
                   <input
                     type="file"
                     accept="image/*"
@@ -413,15 +501,15 @@ function App() {
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Solid Colors</label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Colors</label>
+                  <div className="grid grid-cols-5 gap-2">
                     {defaultBackgrounds.map(color => (
                       <button
                         key={color}
                         onClick={() => setSelectedBackground(color)}
-                        className={`w-full h-10 rounded-lg border-2 transition-all ${
+                        className={`w-full h-8 rounded border-2 transition-all ${
                           selectedBackground === color ? 'border-blue-500' : 'border-gray-300'
                         }`}
                         style={{ backgroundColor: color }}
@@ -438,7 +526,7 @@ function App() {
                         <div key={bg.name} className="flex items-center gap-2">
                           <button
                             onClick={() => setSelectedBackground(bg.url)}
-                            className={`flex-1 h-10 rounded border-2 transition-all ${
+                            className={`flex-1 h-8 rounded border-2 transition-all ${
                               selectedBackground === bg.url ? 'border-blue-500' : 'border-gray-300'
                             }`}
                             style={{ 
@@ -451,7 +539,7 @@ function App() {
                             onClick={() => deleteBackground(bg.name)}
                             className="p-1 text-red-600 hover:text-red-800"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       ))}
@@ -461,27 +549,6 @@ function App() {
               </div>
             </div>
 
-            {/* Layout Controls */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-                <Settings size={20} />
-                Layout
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Padding</label>
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={padding}
-                    onChange={(e) => setPadding(Number(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="text-sm text-gray-600">{padding}px</div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
