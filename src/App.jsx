@@ -321,9 +321,9 @@ function App() {
   return (
     <div className="flex h-screen bg-gray-50">
         {/* Left: Preview (61.8%) */}
-        <div className="w-[61.8%] p-6 border-r bg-white">
-          <div className="h-full flex flex-col relative">
-            <div className="flex-1 border-2 border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+        <div className="w-[61.8%] p-6 border-r bg-gray-50">
+          <div className="h-full bg-white rounded-lg shadow-sm p-4 relative">
+            <div className="flex-1 border border-black border-opacity-50 rounded-lg overflow-hidden relative" style={{ backgroundColor: selectedBackground.startsWith('#') ? selectedBackground : 'transparent' }}>
               <canvas
                 ref={canvasRef}
                 className="w-full h-full object-contain"
@@ -331,7 +331,7 @@ function App() {
             </div>
             <button
               onClick={exportImage}
-              className="absolute bottom-8 right-8 flex items-center gap-2 px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 transition-colors shadow-lg"
+              className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 transition-colors shadow-lg"
             >
               <Download size={14} />
               Export
