@@ -132,8 +132,18 @@ function App() {
     const width = 1080
     const height = 1440
     
+    // Set canvas actual size
     canvas.width = width
     canvas.height = height
+    
+    // Set display size to match container
+    const container = canvas.parentElement
+    const containerWidth = container.clientWidth
+    const containerHeight = container.clientHeight
+    const scale = Math.min(containerWidth / width, containerHeight / height)
+    
+    canvas.style.width = (width * scale) + 'px'
+    canvas.style.height = (height * scale) + 'px'
     
     // Clear canvas
     ctx.clearRect(0, 0, width, height)
@@ -323,10 +333,11 @@ function App() {
         {/* Left: Preview (61.8%) */}
         <div className="w-[61.8%] p-3">
           <div className="h-full bg-white rounded-lg shadow-sm p-3 relative">
-            <div className="flex-1 border border-black border-opacity-50 rounded-lg overflow-hidden relative" style={{ backgroundColor: selectedBackground.startsWith('#') ? selectedBackground : 'transparent' }}>
+            <div className="flex-1 border border-black border-opacity-25 rounded-lg overflow-hidden relative" style={{ backgroundColor: selectedBackground.startsWith('#') ? selectedBackground : 'transparent' }}>
               <canvas
                 ref={canvasRef}
-                className="w-full h-full object-contain"
+                className="w-full h-full"
+                style={{ imageRendering: 'auto', maxWidth: '100%', maxHeight: '100%' }}
               />
             </div>
             <button
