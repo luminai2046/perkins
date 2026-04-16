@@ -321,7 +321,7 @@ function App() {
   return (
     <div className="flex h-screen bg-gray-50">
         {/* Left: Preview (61.8%) */}
-        <div className="w-[61.8%] p-6 border-r bg-gray-50">
+        <div className="w-[61.8%] p-3 bg-gray-50">
           <div className="h-full bg-white rounded-lg shadow-sm p-4 relative">
             <div className="flex-1 border border-black border-opacity-50 rounded-lg overflow-hidden relative" style={{ backgroundColor: selectedBackground.startsWith('#') ? selectedBackground : 'transparent' }}>
               <canvas
@@ -340,7 +340,7 @@ function App() {
         </div>
 
         {/* Right: Controls (38.2%) */}
-        <div className="w-[38.2%] p-6 overflow-y-auto bg-gray-50">
+        <div className="w-[38.2%] p-3 overflow-y-auto bg-gray-50">
           <div className="space-y-4 max-w-2xl mx-auto">
             
             {/* Text Input */}
