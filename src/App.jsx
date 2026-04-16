@@ -319,10 +319,10 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen" style={{ backgroundColor: '#F6F4F0' }}>
         {/* Left: Preview (61.8%) */}
-        <div className="w-[61.8%] p-3 bg-gray-50">
-          <div className="h-full bg-white rounded-lg shadow-sm p-4 relative">
+        <div className="w-[61.8%] p-3">
+          <div className="h-full bg-white rounded-lg shadow-sm p-3 relative">
             <div className="flex-1 border border-black border-opacity-50 rounded-lg overflow-hidden relative" style={{ backgroundColor: selectedBackground.startsWith('#') ? selectedBackground : 'transparent' }}>
               <canvas
                 ref={canvasRef}
@@ -331,7 +331,7 @@ function App() {
             </div>
             <button
               onClick={exportImage}
-              className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 transition-colors shadow-lg"
+              className="absolute bottom-3 right-3 flex items-center gap-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 transition-colors shadow-lg"
             >
               <Download size={14} />
               Export
@@ -340,7 +340,7 @@ function App() {
         </div>
 
         {/* Right: Controls (38.2%) */}
-        <div className="w-[38.2%] p-3 overflow-y-auto bg-gray-50">
+        <div className="w-[38.2%] p-3 overflow-y-auto">
           <div className="space-y-4 max-w-2xl mx-auto">
             
             {/* Text Input */}
