@@ -298,8 +298,8 @@ function App() {
       </header>
 
       <div className="flex h-screen pt-16">
-        {/* Left: Preview */}
-        <div className="w-1/2 p-6 border-r bg-white">
+        {/* Left: Preview (61.8%) */}
+        <div className="w-[61.8%] p-6 border-r bg-white">
           <div className="h-full flex flex-col">
             <div className="mb-4 flex justify-between items-center">
               <h2 className="text-lg font-semibold">Preview</h2>
@@ -320,8 +320,8 @@ function App() {
           </div>
         </div>
 
-        {/* Right: Controls */}
-        <div className="w-1/2 p-6 overflow-y-auto bg-gray-50">
+        {/* Right: Controls (38.2%) */}
+        <div className="w-[38.2%] p-6 overflow-y-auto bg-gray-50">
           <div className="space-y-6 max-w-2xl mx-auto">
             
             {/* Text Input */}
