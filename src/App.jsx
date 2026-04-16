@@ -98,6 +98,9 @@ function App() {
     const lines = []
     let currentLine = ''
     
+    // Chinese punctuation that should not appear at line start
+    const chinesePunctuation = /[,\u3002\uff0c\uff01\uff1f\uff1b\uff1a""''\u300c\u300d\u300e\u300f\u3010\u3011\u300a\u300b\u3008\u3009\u301c\u301d\u301e\u301f]/g
+    
     // Split text into words, but also handle very long words
     const words = text.split(' ')
     
@@ -147,7 +150,35 @@ function App() {
       lines.push(currentLine)
     }
     
-    return lines
+    // Post-process lines to handle Chinese punctuation
+    return fixChinesePunctuation(lines, chinesePunctuation)
+  }
+
+  const fixChinesePunctuation = (lines, punctuationRegex) => {
+    const fixedLines = [...lines]
+    
+    for (let i = 1; i < fixedLines.length; i++) {
+      const currentLine = fixedLines[i]
+      const previousLine = fixedLines[i - 1]
+      
+      // Check if current line starts with Chinese punctuation
+      if (punctuationRegex.test(currentLine.charAt(0))) {
+        // Move the punctuation to the end of the previous line
+        const punctuation = currentLine.charAt(0)
+        const remainingText = currentLine.slice(1)
+        
+        fixedLines[i - 1] = previousLine + punctuation
+        fixedLines[i] = remainingText
+        
+        // If the remaining text is empty, remove this line
+        if (remainingText.trim() === '') {
+          fixedLines.splice(i, 1)
+          i-- // Adjust index since we removed a line
+        }
+      }
+    }
+    
+    return fixedLines
   }
 
   const exportImage = () => {
