@@ -289,20 +289,11 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Perkins</h1>
-          <p className="text-gray-600 text-sm">Transform text into beautiful images</p>
-        </div>
-      </header>
-
-      <div className="flex h-screen pt-16">
+    <div className="flex h-screen bg-gray-50">
         {/* Left: Preview (61.8%) */}
         <div className="w-[61.8%] p-6 border-r bg-white">
           <div className="h-full flex flex-col">
-            <div className="mb-4 flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Preview</h2>
+            <div className="mb-4 flex justify-end items-center">
               <button
                 onClick={exportImage}
                 className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
@@ -322,11 +313,10 @@ function App() {
 
         {/* Right: Controls (38.2%) */}
         <div className="w-[38.2%] p-6 overflow-y-auto bg-gray-50">
-          <div className="space-y-6 max-w-2xl mx-auto">
+          <div className="space-y-4 max-w-2xl mx-auto">
             
             {/* Text Input */}
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-lg font-semibold mb-3">Text Content</h3>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -339,10 +329,10 @@ function App() {
             {/* Font Selection */}
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <Type size={18} />
-                  Fonts
-                </h3>
+                  <span className="text-sm font-medium">Fonts</span>
+                </div>
                 <button
                   onClick={() => setShowFontUpload(!showFontUpload)}
                   className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -381,7 +371,6 @@ function App() {
 
             {/* Typography Controls (Row) */}
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-lg font-semibold mb-3">Typography</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Size</label>
@@ -423,7 +412,6 @@ function App() {
 
             {/* Spacing Controls (Row) */}
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-lg font-semibold mb-3">Spacing</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Line Height</label>
@@ -456,10 +444,6 @@ function App() {
 
             {/* Layout Padding */}
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2 mb-3">
-                <Settings size={18} />
-                Layout
-              </h3>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Padding</label>
                 <input
@@ -477,10 +461,10 @@ function App() {
             {/* Background Selection */}
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <Palette size={18} />
-                  Background
-                </h3>
+                  <span className="text-sm font-medium">Background</span>
+                </div>
                 <button
                   onClick={() => setShowBackgroundUpload(!showBackgroundUpload)}
                   className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -503,7 +487,6 @@ function App() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Colors</label>
                   <div className="grid grid-cols-5 gap-2">
                     {defaultBackgrounds.map(color => (
                       <button
@@ -519,31 +502,28 @@ function App() {
                 </div>
 
                 {uploadedBackgrounds.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Custom Images</label>
-                    <div className="space-y-2">
-                      {uploadedBackgrounds.map(bg => (
-                        <div key={bg.name} className="flex items-center gap-2">
-                          <button
-                            onClick={() => setSelectedBackground(bg.url)}
-                            className={`flex-1 h-8 rounded border-2 transition-all ${
-                              selectedBackground === bg.url ? 'border-blue-500' : 'border-gray-300'
-                            }`}
-                            style={{ 
-                              backgroundImage: `url(${bg.url})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center'
-                            }}
-                          />
-                          <button
-                            onClick={() => deleteBackground(bg.name)}
-                            className="p-1 text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="space-y-2">
+                    {uploadedBackgrounds.map(bg => (
+                      <div key={bg.name} className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedBackground(bg.url)}
+                          className={`flex-1 h-8 rounded border-2 transition-all ${
+                            selectedBackground === bg.url ? 'border-blue-500' : 'border-gray-300'
+                          }`}
+                          style={{ 
+                            backgroundImage: `url(${bg.url})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center'
+                          }}
+                        />
+                        <button
+                          onClick={() => deleteBackground(bg.name)}
+                          className="p-1 text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -551,7 +531,6 @@ function App() {
 
           </div>
         </div>
-      </div>
     </div>
   )
 }
