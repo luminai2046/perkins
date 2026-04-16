@@ -79,32 +79,66 @@ function App() {
     let y = padding
     
     lines.forEach(line => {
-      let x = padding
-      for (let i = 0; i < line.length; i++) {
-        ctx.fillText(line[i], x, y)
-        x += ctx.measureText(line[i]).width + letterSpacingPx
+      if (letterSpacingPx > 0) {
+        // Render with letter spacing
+        let x = padding
+        for (let i = 0; i < line.length; i++) {
+          ctx.fillText(line[i], x, y)
+          x += ctx.measureText(line[i]).width + letterSpacingPx
+        }
+      } else {
+        // Render normally for better performance
+        ctx.fillText(line, padding, y)
       }
       y += lineHeightPx
     })
   }
 
   const wrapText = (ctx, text, maxWidth, letterSpacing) => {
-    const words = text.split(' ')
     const lines = []
     let currentLine = ''
     
+    // Split text into words, but also handle very long words
+    const words = text.split(' ')
+    
     for (let word of words) {
+      // Test if adding this word to current line exceeds max width
       const testLine = currentLine + (currentLine ? ' ' : '') + word
       const testWidth = ctx.measureText(testLine).width + (testLine.length - 1) * letterSpacing
       
       if (testWidth <= maxWidth) {
         currentLine = testLine
       } else {
+        // If current line is not empty, push it
         if (currentLine) {
           lines.push(currentLine)
           currentLine = word
         } else {
-          lines.push(word)
+          // Handle very long single word that exceeds max width
+          if (ctx.measureText(word).width > maxWidth) {
+            // Break the long word character by character
+            let wordPart = ''
+            for (let i = 0; i < word.length; i++) {
+              const testWord = wordPart + word[i]
+              const wordWidth = ctx.measureText(testWord).width + (testWord.length - 1) * letterSpacing
+              
+              if (wordWidth <= maxWidth) {
+                wordPart = testWord
+              } else {
+                if (wordPart) {
+                  lines.push(wordPart)
+                  wordPart = word[i]
+                } else {
+                  lines.push(word[i])
+                }
+              }
+            }
+            if (wordPart) {
+              currentLine = wordPart
+            }
+          } else {
+            currentLine = word
+          }
         }
       }
     }
