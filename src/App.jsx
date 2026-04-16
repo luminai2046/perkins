@@ -4,6 +4,9 @@ import { Download, Upload, Type, Image, Palette, Settings, Plus, Trash2 } from '
 function App() {
   const canvasRef = useRef(null)
   
+  // Default text constant
+  const defaultText = "Here's to the crazy ones. The misfits. The rebels. The troublemakers. The round pegs in the square holes. The ones who see things differently. They're not fond of rules. And they have no respect for the status quo. You can quote them, disagree with them, glorify or vilify them. About the only thing you can't do is ignore them. Because they change things. They push the human race forward. And while some may see them as the crazy ones, we see genius. Because the people who are crazy enough to think they can change the world, are the ones who do."
+  
   // Load saved settings from localStorage
   const loadSettings = () => {
     const savedFont = localStorage.getItem('perkins-selectedFont') || 'Arial'
@@ -14,7 +17,7 @@ function App() {
     const savedFontStyle = localStorage.getItem('perkins-fontStyle') || 'normal'
     const savedPadding = parseInt(localStorage.getItem('perkins-padding')) || 72
     const savedBackground = localStorage.getItem('perkins-selectedBackground') || '#f3f4f6'
-    const savedText = localStorage.getItem('perkins-text') || "Here's to the crazy ones. The misfits. The rebels. The troublemakers. The round pegs in the square holes. The ones who see things differently. They're not fond of rules. And they have no respect for the status quo. You can quote them, disagree with them, glorify or vilify them. About the only thing you can't do is ignore them. Because they change things. They push the human race forward. And while some may see them as the crazy ones, we see genius. Because the people who are crazy enough to think they can change the world, are the ones who do."
+    const savedText = localStorage.getItem('perkins-text') || defaultText
     const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]')
     const savedBackgrounds = JSON.parse(localStorage.getItem('perkins-uploadedBackgrounds') || '[]')
     
@@ -48,6 +51,8 @@ function App() {
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState(savedSettings.uploadedBackgrounds)
   const [showFontUpload, setShowFontUpload] = useState(false)
   const [showBackgroundUpload, setShowBackgroundUpload] = useState(false)
+  const [isTextFocused, setIsTextFocused] = useState(false)
+  const [hasUserInput, setHasUserInput] = useState(false)
   
   // Save settings to localStorage whenever they change
   useEffect(() => {
@@ -63,6 +68,31 @@ function App() {
     localStorage.setItem('perkins-uploadedFonts', JSON.stringify(uploadedFonts))
     localStorage.setItem('perkins-uploadedBackgrounds', JSON.stringify(uploadedBackgrounds))
   }, [selectedFont, fontSize, lineHeight, letterSpacing, fontWeight, fontStyle, padding, selectedBackground, text, uploadedFonts, uploadedBackgrounds])
+  
+  // Handle text focus and blur events
+  const handleTextFocus = () => {
+    setIsTextFocused(true)
+    if (text === defaultText) {
+      setText('')
+    }
+  }
+  
+  const handleTextBlur = () => {
+    setIsTextFocused(false)
+    if (text.trim() === '') {
+      setText(defaultText)
+      setHasUserInput(false)
+    } else {
+      setHasUserInput(true)
+    }
+  }
+  
+  const handleTextChange = (e) => {
+    setText(e.target.value)
+    if (e.target.value.trim() !== '') {
+      setHasUserInput(true)
+    }
+  }
   
   // Load fonts from localStorage on mount
   useEffect(() => {
@@ -292,22 +322,20 @@ function App() {
     <div className="flex h-screen bg-gray-50">
         {/* Left: Preview (61.8%) */}
         <div className="w-[61.8%] p-6 border-r bg-white">
-          <div className="h-full flex flex-col">
-            <div className="mb-4 flex justify-end items-center">
-              <button
-                onClick={exportImage}
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Download size={14} />
-                Export
-              </button>
-            </div>
+          <div className="h-full flex flex-col relative">
             <div className="flex-1 border-2 border-gray-200 rounded-lg overflow-hidden bg-gray-50">
               <canvas
                 ref={canvasRef}
                 className="w-full h-full object-contain"
               />
             </div>
+            <button
+              onClick={exportImage}
+              className="absolute bottom-8 right-8 flex items-center gap-2 px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 transition-colors shadow-lg"
+            >
+              <Download size={14} />
+              Export
+            </button>
           </div>
         </div>
 
@@ -319,14 +347,10 @@ function App() {
             <div className="bg-white rounded-lg shadow-sm p-4">
               <textarea
                 value={text}
-                onChange={(e) => setText(e.target.value)}
-                onFocus={(e) => {
-                  if (e.target.value === "Here's to the crazy ones. The misfits. The rebels. The troublemakers. The round pegs in the square holes. The ones who see things differently. They're not fond of rules. And they have no respect for the status quo. You can quote them, disagree with them, glorify or vilify them. About the only thing you can't do is ignore them. Because they change things. They push the human race forward. And while some may see them as the crazy ones, we see genius. Because the people who are crazy enough to think they can change the world, are the ones who do.") {
-                    e.target.value = ''
-                    setText('')
-                  }
-                }}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y text-gray-500 placeholder-gray-400"
+                onChange={handleTextChange}
+                onFocus={handleTextFocus}
+                onBlur={handleTextBlur}
+                className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${text === defaultText && !isTextFocused ? 'text-gray-400' : 'text-gray-900'}`}
                 style={{ minHeight: '120px', maxHeight: '300px' }}
                 placeholder="Enter your text here..."
               />
@@ -430,7 +454,7 @@ function App() {
                     type="range"
                     min="1"
                     max="3"
-                    step="0.1"
+                    step="0.05"
                     value={lineHeight}
                     onChange={(e) => setLineHeight(Number(e.target.value))}
                     className="w-full"
