@@ -291,59 +291,63 @@ function App() {
 
   const wrapText = (ctx, text, maxWidth, letterSpacing) => {
     const lines = []
-    let currentLine = ''
     
     // Chinese punctuation that should not appear at line start
     const chinesePunctuation = /[\u3002\uff0c\uff01\uff1f\uff1b\uff1a\u3001\uff08\uff09\u300c\u300d\u300e\u300f\u3010\u3011\u300a\u300b\u3008\u3009\u301c\u301d\u301e\u301f\u300c\u300d\u300e\u300f\u201c\u201d\u2018\u2019]/
-    
-    // Split text into words, but also handle very long words
-    const words = text.split(' ')
-    
-    for (let word of words) {
-      // Test if adding this word to current line exceeds max width
-      const testLine = currentLine + (currentLine ? ' ' : '') + word
-      const testWidth = ctx.measureText(testLine).width + (testLine.length - 1) * letterSpacing
-      
-      if (testWidth <= maxWidth) {
-        currentLine = testLine
-      } else {
-        // If current line is not empty, push it
-        if (currentLine) {
-          lines.push(currentLine)
-          currentLine = word
-        } else {
-          // Handle very long single word that exceeds max width
-          if (ctx.measureText(word).width > maxWidth) {
-            // Break the long word character by character
-            let wordPart = ''
-            for (let i = 0; i < word.length; i++) {
-              const testWord = wordPart + word[i]
-              const wordWidth = ctx.measureText(testWord).width + (testWord.length - 1) * letterSpacing
-              
-              if (wordWidth <= maxWidth) {
-                wordPart = testWord
-              } else {
-                if (wordPart) {
-                  lines.push(wordPart)
-                  wordPart = word[i]
-                } else {
-                  lines.push(word[i])
-                }
-              }
-            }
-            if (wordPart) {
-              currentLine = wordPart
-            }
-          } else {
-            currentLine = word
+
+    const measureWidth = (str) => {
+      if (!str) return 0
+      return ctx.measureText(str).width + Math.max(0, str.length - 1) * letterSpacing
+    }
+
+    const paragraphs = String(text ?? '').split('\n')
+    paragraphs.forEach((paragraph, paragraphIdx) => {
+      // If the paragraph contains CJK characters, prefer character-based wrapping.
+      // This avoids "one inserted space becomes the only wrap point" behavior.
+      const hasCJK = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(paragraph)
+      let currentLine = ''
+      let lastSpaceIndex = -1
+
+      for (let i = 0; i < paragraph.length; i++) {
+        const ch = paragraph[i]
+        currentLine += ch
+        if (ch === ' ') lastSpaceIndex = currentLine.length - 1
+
+        // If the line overflows, break it down until it fits.
+        while (measureWidth(currentLine) > maxWidth) {
+          if (currentLine.length === 1) {
+            lines.push(currentLine)
+            currentLine = ''
+            lastSpaceIndex = -1
+            break
           }
+
+          // Prefer breaking at spaces for non-CJK text (word wrapping).
+          // For CJK paragraphs we wrap by character instead to behave naturally.
+          if (!hasCJK && lastSpaceIndex > 0) {
+            // Preserve runs of consecutive spaces by keeping them in the next line.
+            let runStart = lastSpaceIndex
+            while (runStart > 0 && currentLine[runStart - 1] === ' ') runStart--
+
+            const left = currentLine.slice(0, runStart)
+            const right = currentLine.slice(runStart)
+
+            lines.push(left)
+            currentLine = right
+            lastSpaceIndex = currentLine.lastIndexOf(' ')
+            continue
+          }
+
+          // No usable space: hard break by characters.
+          lines.push(currentLine.slice(0, -1))
+          currentLine = currentLine.slice(-1)
+          lastSpaceIndex = currentLine === ' ' ? 0 : -1
         }
       }
-    }
-    
-    if (currentLine) {
-      lines.push(currentLine)
-    }
+
+      if (currentLine) lines.push(currentLine)
+      if (paragraphIdx < paragraphs.length - 1) lines.push('')
+    })
     
     // Post-process lines to handle Chinese punctuation
     return fixChinesePunctuation(lines, chinesePunctuation)
