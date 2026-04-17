@@ -3,6 +3,50 @@ import { Download, Upload, Type, Image, Palette, Settings, Plus, Trash2 } from '
 
 function App() {
   const canvasRef = useRef(null)
+  const objectUrlsRef = useRef(new Map())
+
+  const openPerkinsDb = () =>
+    new Promise((resolve, reject) => {
+      const request = indexedDB.open('perkins', 1)
+      request.onupgradeneeded = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains('fonts')) {
+          db.createObjectStore('fonts', { keyPath: 'id' })
+        }
+      }
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+
+  const idbPutFont = async (record) => {
+    const db = await openPerkinsDb()
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction('fonts', 'readwrite')
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+      tx.objectStore('fonts').put(record)
+    })
+  }
+
+  const idbGetFont = async (id) => {
+    const db = await openPerkinsDb()
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction('fonts', 'readonly')
+      const request = tx.objectStore('fonts').get(id)
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  const idbDeleteFont = async (id) => {
+    const db = await openPerkinsDb()
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction('fonts', 'readwrite')
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+      tx.objectStore('fonts').delete(id)
+    })
+  }
   
   // Default text constant
   const defaultText = "Here's to the crazy ones. The misfits. The rebels. The troublemakers. The round pegs in the square holes. The ones who see things differently. They're not fond of rules. And they have no respect for the status quo. You can quote them, disagree with them, glorify or vilify them. About the only thing you can't do is ignore them. Because they change things. They push the human race forward. And while some may see them as the crazy ones, we see genius. Because the people who are crazy enough to think they can change the world, are the ones who do."
@@ -10,17 +54,16 @@ function App() {
   // Load saved settings from localStorage
   const loadSettings = () => {
     const savedFontName = localStorage.getItem('perkins-selectedFont') || 'Georgia'
-    const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]')
-      // Previously we stored blob: object URLs which are not valid after reload.
-      // Filter them out so the UI doesn't offer fonts that cannot be loaded.
-      .filter(font => font?.url && typeof font.url === 'string' && !font.url.startsWith('blob:'))
+    const savedFontsMeta = JSON.parse(localStorage.getItem('perkins-uploadedFontsMeta') || '[]')
+      .filter(font => font?.id && font?.name)
       .map(font => ({
-        ...font,
+        id: font.id,
+        name: font.name,
         uploadTime: font.uploadTime || 0
       }))
     
     // Validate that saved font exists in available fonts
-    const availableFonts = ['Georgia', ...savedFonts.map(f => f.name)]
+    const availableFonts = ['Georgia', ...savedFontsMeta.map(f => f.name)]
     const savedFont = availableFonts.includes(savedFontName) ? savedFontName : 'Georgia'
     const savedFontSize = parseInt(localStorage.getItem('perkins-fontSize')) || 14
     const savedLineHeight = parseFloat(localStorage.getItem('perkins-lineHeight')) || 1.7
@@ -46,7 +89,7 @@ function App() {
       paddingLeftRight: savedPaddingLeftRight,
       selectedBackground: savedBackground,
       text: savedText,
-      uploadedFonts: savedFonts,
+      uploadedFontsMeta: savedFontsMeta,
       uploadedBackgrounds: savedBackgrounds
     }
   }
@@ -65,7 +108,7 @@ function App() {
   const [paddingUp, setPaddingUp] = useState(savedSettings.paddingUp)
   const [paddingLeftRight, setPaddingLeftRight] = useState(savedSettings.paddingLeftRight)
   const [selectedBackground, setSelectedBackground] = useState(savedSettings.selectedBackground)
-  const [uploadedFonts, setUploadedFonts] = useState(savedSettings.uploadedFonts)
+  const [uploadedFonts, setUploadedFonts] = useState([])
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState(savedSettings.uploadedBackgrounds)
   const [showFontUpload, setShowFontUpload] = useState(false)
   const [showBackgroundUpload, setShowBackgroundUpload] = useState(false)
@@ -114,7 +157,12 @@ function App() {
 
     // Fonts can be large; avoid crashing the app on quota exceeded.
     try {
-      localStorage.setItem('perkins-uploadedFonts', JSON.stringify(uploadedFonts))
+      const uploadedFontsMeta = uploadedFonts.map(f => ({
+        id: f.id,
+        name: f.name,
+        uploadTime: f.uploadTime || 0
+      }))
+      localStorage.setItem('perkins-uploadedFontsMeta', JSON.stringify(uploadedFontsMeta))
     } catch (err) {
       console.warn('Failed saving uploaded fonts to localStorage:', err)
     }
@@ -147,20 +195,50 @@ function App() {
   
   // Load fonts from localStorage on mount
   useEffect(() => {
-    // Use the same font data that was loaded in savedSettings
-    const fontsToLoad = savedSettings.uploadedFonts
-    fontsToLoad.forEach(font => {
-      const fontFace = new FontFace(font.name, `url(${font.url})`)
-      fontFace.load().then(() => {
-        document.fonts.add(fontFace)
-        // Force canvas re-render after font loads
+    let cancelled = false
+
+    const restoreFonts = async () => {
+      const meta = savedSettings.uploadedFontsMeta || []
+      if (!meta.length) return
+
+      const restored = []
+      for (const item of meta) {
+        try {
+          const record = await idbGetFont(item.id)
+          if (!record?.data) continue
+
+          const blob = new Blob([record.data], { type: record.type || 'font/ttf' })
+          const url = URL.createObjectURL(blob)
+          objectUrlsRef.current.set(record.id, url)
+
+          const fontFace = new FontFace(record.name, `url(${url})`)
+          await fontFace.load()
+          document.fonts.add(fontFace)
+
+          restored.push({ id: record.id, name: record.name, url, uploadTime: item.uploadTime || 0 })
+        } catch (err) {
+          console.warn('Failed to restore font:', item?.name, err)
+        }
+      }
+
+      if (cancelled) return
+      if (restored.length) {
+        setUploadedFonts(restored)
+        // If selectedFont points to a missing uploaded font, fall back.
+        const available = new Set(['Georgia', ...restored.map(f => f.name)])
+        if (!available.has(selectedFont)) {
+          setSelectedFont('Georgia')
+        }
         setTimeout(() => {
           renderCanvas()
         }, 100)
-      }).catch(err => {
-        console.warn('Failed to load font:', font.name, err)
-      })
-    })
+      }
+    }
+
+    restoreFonts()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Default backgrounds
@@ -268,24 +346,25 @@ function App() {
     
     const maxWidth = width - (paddingLeftRight * 2)
     const lineHeightPx = fontSize * 4 * lineHeight
+    const emptyLineHeightPx = lineHeightPx * 0.6
     const letterSpacingPx = letterSpacing * 4
     
     const lines = wrapText(ctx, text, maxWidth, letterSpacingPx)
     let y = paddingUp
     
     lines.forEach(line => {
-      if (letterSpacingPx > 0) {
+      if (line && letterSpacingPx > 0) {
         // Render with letter spacing
         let x = paddingLeftRight
         for (let i = 0; i < line.length; i++) {
           ctx.fillText(line[i], x, y)
           x += ctx.measureText(line[i]).width + letterSpacingPx
         }
-      } else {
+      } else if (line) {
         // Render normally for better performance
         ctx.fillText(line, paddingLeftRight, y)
       }
-      y += lineHeightPx
+      y += line ? lineHeightPx : emptyLineHeightPx
     })
   }
 
@@ -442,22 +521,23 @@ function App() {
     
     const maxWidth = width - (paddingLeftRight * 2)
     const lineHeightPx = fontSize * 4 * lineHeight
+    const emptyLineHeightPx = lineHeightPx * 0.6
     const letterSpacingPx = letterSpacing * 4
     
     const lines = wrapText(ctx, text, maxWidth, letterSpacingPx)
     let y = paddingUp
     
     lines.forEach(line => {
-      if (letterSpacingPx > 0) {
+      if (line && letterSpacingPx > 0) {
         let x = paddingLeftRight
         for (let i = 0; i < line.length; i++) {
           ctx.fillText(line[i], x, y)
           x += ctx.measureText(line[i]).width + letterSpacingPx
         }
-      } else {
+      } else if (line) {
         ctx.fillText(line, paddingLeftRight, y)
       }
-      y += lineHeightPx
+      y += line ? lineHeightPx : emptyLineHeightPx
     })
   }
   
@@ -473,19 +553,32 @@ function App() {
     files.forEach(file => {
       const fontName = file.name.replace(/\.[^/.]+$/, '')
       try {
-        // Use an object URL for runtime use (fast, avoids localStorage quota issues).
-        const fontUrl = URL.createObjectURL(file)
+        const id = `${fontName}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+        const uploadTime = Date.now()
 
-        setUploadedFonts(prev => [...prev, { name: fontName, url: fontUrl, uploadTime: Date.now() }])
+        file.arrayBuffer().then(async (data) => {
+          try {
+            await idbPutFont({ id, name: fontName, type: file.type, data })
+          } catch (err) {
+            console.warn('Failed persisting font to IndexedDB:', fontName, err)
+          }
 
-        const fontFace = new FontFace(fontName, `url(${fontUrl})`)
-        fontFace.load().then(() => {
-          document.fonts.add(fontFace)
-          setTimeout(() => {
-            renderCanvas()
-          }, 100)
+          const fontUrl = URL.createObjectURL(new Blob([data], { type: file.type || 'font/ttf' }))
+          objectUrlsRef.current.set(id, fontUrl)
+
+          setUploadedFonts(prev => [...prev, { id, name: fontName, url: fontUrl, uploadTime }])
+
+          const fontFace = new FontFace(fontName, `url(${fontUrl})`)
+          fontFace.load().then(() => {
+            document.fonts.add(fontFace)
+            setTimeout(() => {
+              renderCanvas()
+            }, 100)
+          }).catch(err => {
+            console.warn('Font loading failed:', fontName, err)
+          })
         }).catch(err => {
-          console.warn('Font loading failed:', fontName, err)
+          console.warn('Failed reading font file:', fontName, err)
         })
       } catch (err) {
         console.error('Font upload error:', err)
@@ -511,7 +604,19 @@ function App() {
 
   const deleteFont = (fontName) => {
     setUploadedFonts(prev => {
+      const toDelete = prev.find(font => font.name === fontName)
       const newFonts = prev.filter(font => font.name !== fontName)
+
+      if (toDelete?.id) {
+        const url = objectUrlsRef.current.get(toDelete.id)
+        if (url) {
+          URL.revokeObjectURL(url)
+          objectUrlsRef.current.delete(toDelete.id)
+        }
+        idbDeleteFont(toDelete.id).catch(err => {
+          console.warn('Failed deleting font from IndexedDB:', toDelete.name, err)
+        })
+      }
       
       // If the deleted font was selected, find a replacement
       if (selectedFont === fontName) {
@@ -798,7 +903,7 @@ function App() {
                   <input
                     type="range"
                     min="10"
-                    max="150"
+                    max="300"
                     value={paddingUp}
                     onChange={(e) => setPaddingUp(Number(e.target.value))}
                     className="w-full"
