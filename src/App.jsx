@@ -238,7 +238,7 @@ function App() {
     let currentLine = ''
     
     // Chinese punctuation that should not appear at line start
-    const chinesePunctuation = /[,\u3002\uff0c\uff01\uff1f\uff1b\uff1a""''\u300c\u300d\u300e\u300f\u3010\u3011\u300a\u300b\u3008\u3009\u301c\u301d\u301e\u301f]/g
+    const chinesePunctuation = /[\u3002\uff0c\uff01\uff1f\uff1b\uff1a\u3001\uff08\uff09\u300c\u300d\u300e\u300f\u3010\u3011\u300a\u300b\u3008\u3009\u301c\u301d\u301e\u301f\u300c\u300d\u300e\u300f\u201c\u201d\u2018\u2019]/
     
     // Split text into words, but also handle very long words
     const words = text.split(' ')
@@ -296,23 +296,43 @@ function App() {
   const fixChinesePunctuation = (lines, punctuationRegex) => {
     const fixedLines = [...lines]
     
-    for (let i = 1; i < fixedLines.length; i++) {
-      const currentLine = fixedLines[i]
-      const previousLine = fixedLines[i - 1]
-      
-      // Check if current line starts with Chinese punctuation
-      if (punctuationRegex.test(currentLine.charAt(0))) {
-        // Move the punctuation to the end of the previous line
-        const punctuation = currentLine.charAt(0)
-        const remainingText = currentLine.slice(1)
+    // Process multiple times to handle cascading punctuation
+    for (let pass = 0; pass < 3; pass++) {
+      for (let i = 1; i < fixedLines.length; i++) {
+        const currentLine = fixedLines[i]
+        const previousLine = fixedLines[i - 1]
         
-        fixedLines[i - 1] = previousLine + punctuation
-        fixedLines[i] = remainingText
+        // Check if current line starts with Chinese punctuation
+        const firstChar = currentLine.charAt(0)
+        if (punctuationRegex.test(firstChar)) {
+          // Move the punctuation to the end of the previous line
+          const punctuation = firstChar
+          const remainingText = currentLine.slice(1)
+          
+          fixedLines[i - 1] = previousLine + punctuation
+          fixedLines[i] = remainingText
+          
+          // If the remaining text is empty, remove this line
+          if (remainingText.trim() === '') {
+            fixedLines.splice(i, 1)
+            i-- // Adjust index since we removed a line
+          }
+        }
         
-        // If the remaining text is empty, remove this line
-        if (remainingText.trim() === '') {
-          fixedLines.splice(i, 1)
-          i-- // Adjust index since we removed a line
+        // Also check if the line starts with spaces followed by punctuation
+        const trimmedLine = currentLine.trimLeft()
+        if (trimmedLine !== currentLine && punctuationRegex.test(trimmedLine.charAt(0))) {
+          const leadingSpaces = currentLine.length - trimmedLine.length
+          const punctuation = trimmedLine.charAt(0)
+          const remainingText = trimmedLine.slice(1)
+          
+          fixedLines[i - 1] = previousLine + punctuation
+          fixedLines[i] = ' '.repeat(leadingSpaces) + remainingText
+          
+          if (remainingText.trim() === '') {
+            fixedLines.splice(i, 1)
+            i--
+          }
         }
       }
     }
@@ -391,30 +411,40 @@ function App() {
   const handleFontUpload = (e) => {
     const files = Array.from(e.target.files)
     files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (event) => {
+      try {
+        // Use object URL instead of FileReader to prevent memory issues
+        const fontUrl = URL.createObjectURL(file)
         const fontName = file.name.replace(/\.[^/.]+$/, '')
-        const fontUrl = event.target.result
         
-        // Create font face
-        const fontFace = new FontFace(fontName, `url(${fontUrl})`)
-        fontFace.load().then(() => {
+        // Add to state immediately
+        setUploadedFonts(prev => [...prev, { name: fontName, url: fontUrl }])
+        
+        // Try to load font safely
+        try {
+          const fontFace = new FontFace(fontName, `url(${fontUrl})`)
           document.fonts.add(fontFace)
-          setUploadedFonts(prev => [...prev, { name: fontName, url: fontUrl }])
-        })
+        } catch (error) {
+          console.warn('Font loading failed:', fontName)
+        }
+      } catch (error) {
+        console.error('Font upload error:', error)
       }
-      reader.readAsDataURL(file)
     })
   }
 
   const handleBackgroundUpload = (e) => {
     const files = Array.from(e.target.files)
     files.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setUploadedBackgrounds(prev => [...prev, { name: file.name, url: event.target.result }])
+      try {
+        // Use object URL instead of FileReader to prevent memory issues
+        const bgUrl = URL.createObjectURL(file)
+        const bgName = file.name
+        
+        // Add to state immediately
+        setUploadedBackgrounds(prev => [...prev, { name: bgName, url: bgUrl }])
+      } catch (error) {
+        console.error('Background upload error:', error)
       }
-      reader.readAsDataURL(file)
     })
   }
 
