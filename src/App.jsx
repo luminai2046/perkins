@@ -10,10 +10,14 @@ function App() {
   // Load saved settings from localStorage
   const loadSettings = () => {
     const savedFontName = localStorage.getItem('perkins-selectedFont') || 'Georgia'
-    const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]').map(font => ({
-      ...font,
-      uploadTime: font.uploadTime || 0
-    }))
+    const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]')
+      // Previously we stored blob: object URLs which are not valid after reload.
+      // Filter them out so the UI doesn't offer fonts that cannot be loaded.
+      .filter(font => font?.url && typeof font.url === 'string' && !font.url.startsWith('blob:'))
+      .map(font => ({
+        ...font,
+        uploadTime: font.uploadTime || 0
+      }))
     
     // Validate that saved font exists in available fonts
     const availableFonts = ['Georgia', ...savedFonts.map(f => f.name)]
@@ -91,19 +95,29 @@ function App() {
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('perkins-selectedFont', selectedFont)
-    localStorage.setItem('perkins-fontSize', fontSize.toString())
-    localStorage.setItem('perkins-lineHeight', lineHeight.toString())
-    localStorage.setItem('perkins-letterSpacing', letterSpacing.toString())
-    localStorage.setItem('perkins-fontWeight', fontWeight)
-    localStorage.setItem('perkins-fontStyle', fontStyle)
-    localStorage.setItem('perkins-padding', padding.toString())
-    localStorage.setItem('perkins-paddingUp', paddingUp.toString())
-    localStorage.setItem('perkins-paddingLeftRight', paddingLeftRight.toString())
-    localStorage.setItem('perkins-selectedBackground', selectedBackground)
-    localStorage.setItem('perkins-text', text)
-    localStorage.setItem('perkins-uploadedFonts', JSON.stringify(uploadedFonts))
-    localStorage.setItem('perkins-uploadedBackgrounds', JSON.stringify(uploadedBackgrounds))
+    try {
+      localStorage.setItem('perkins-selectedFont', selectedFont)
+      localStorage.setItem('perkins-fontSize', fontSize.toString())
+      localStorage.setItem('perkins-lineHeight', lineHeight.toString())
+      localStorage.setItem('perkins-letterSpacing', letterSpacing.toString())
+      localStorage.setItem('perkins-fontWeight', fontWeight)
+      localStorage.setItem('perkins-fontStyle', fontStyle)
+      localStorage.setItem('perkins-padding', padding.toString())
+      localStorage.setItem('perkins-paddingUp', paddingUp.toString())
+      localStorage.setItem('perkins-paddingLeftRight', paddingLeftRight.toString())
+      localStorage.setItem('perkins-selectedBackground', selectedBackground)
+      localStorage.setItem('perkins-text', text)
+      localStorage.setItem('perkins-uploadedBackgrounds', JSON.stringify(uploadedBackgrounds))
+    } catch (err) {
+      console.warn('Failed saving settings to localStorage:', err)
+    }
+
+    // Fonts can be large; avoid crashing the app on quota exceeded.
+    try {
+      localStorage.setItem('perkins-uploadedFonts', JSON.stringify(uploadedFonts))
+    } catch (err) {
+      console.warn('Failed saving uploaded fonts to localStorage:', err)
+    }
   }, [selectedFont, fontSize, lineHeight, letterSpacing, fontWeight, fontStyle, padding, paddingUp, paddingLeftRight, selectedBackground, text, uploadedFonts, uploadedBackgrounds])
   
   // Handle text focus and blur events
@@ -422,22 +436,22 @@ function App() {
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
     
-    const maxWidth = width - (padding * 2)
+    const maxWidth = width - (paddingLeftRight * 2)
     const lineHeightPx = fontSize * 4 * lineHeight
     const letterSpacingPx = letterSpacing * 4
     
     const lines = wrapText(ctx, text, maxWidth, letterSpacingPx)
-    let y = padding
+    let y = paddingUp
     
     lines.forEach(line => {
       if (letterSpacingPx > 0) {
-        let x = padding
+        let x = paddingLeftRight
         for (let i = 0; i < line.length; i++) {
           ctx.fillText(line[i], x, y)
           x += ctx.measureText(line[i]).width + letterSpacingPx
         }
       } else {
-        ctx.fillText(line, padding, y)
+        ctx.fillText(line, paddingLeftRight, y)
       }
       y += lineHeightPx
     })
@@ -453,42 +467,24 @@ function App() {
   const handleFontUpload = (e) => {
     const files = Array.from(e.target.files)
     files.forEach(file => {
+      const fontName = file.name.replace(/\.[^/.]+$/, '')
       try {
-        // Use object URL instead of FileReader to prevent memory issues
+        // Use an object URL for runtime use (fast, avoids localStorage quota issues).
         const fontUrl = URL.createObjectURL(file)
-        const fontName = file.name.replace(/\.[^/.]+$/, '')
-        
-        // Add to state immediately with timestamp
+
         setUploadedFonts(prev => [...prev, { name: fontName, url: fontUrl, uploadTime: Date.now() }])
-        
-        // Try to load font with proper error handling and loading detection
-        try {
-          const fontFace = new FontFace(fontName, `url(${fontUrl})`)
-          
-          // Load the font and then add it to document
-          fontFace.load().then(() => {
-            document.fonts.add(fontFace)
-            console.log('Font loaded successfully:', fontName)
-            
-            // Force canvas re-render to apply the new font
-            setTimeout(() => {
-              renderCanvas()
-            }, 100)
-          }).catch(error => {
-            console.warn('Font loading failed:', fontName, error)
-            
-            // Try to add anyway - sometimes fonts work even if load() fails
-            try {
-              document.fonts.add(fontFace)
-            } catch (addError) {
-              console.error('Font add failed:', fontName, addError)
-            }
-          })
-        } catch (error) {
-          console.warn('Font creation failed:', fontName, error)
-        }
-      } catch (error) {
-        console.error('Font upload error:', error)
+
+        const fontFace = new FontFace(fontName, `url(${fontUrl})`)
+        fontFace.load().then(() => {
+          document.fonts.add(fontFace)
+          setTimeout(() => {
+            renderCanvas()
+          }, 100)
+        }).catch(err => {
+          console.warn('Font loading failed:', fontName, err)
+        })
+      } catch (err) {
+        console.error('Font upload error:', err)
       }
     })
   }
@@ -518,9 +514,13 @@ function App() {
         const allFonts = ['Arial', 'Times New Roman', 'Georgia', 'Verdana', 'Courier New', ...newFonts.map(f => f.name)]
         const currentIndex = allFonts.indexOf(fontName)
         
-        // Try next font, then previous font, then default to Arial
-        let replacementFont = 'Arial'
-        if (currentIndex < allFonts.length - 1) {
+        // Try next font, then previous font, then default to Georgia
+        let replacementFont = 'Georgia'
+        // If the font no longer exists in the list (e.g. just deleted an uploaded font),
+        // fall back directly to the default.
+        if (currentIndex === -1) {
+          replacementFont = 'Georgia'
+        } else if (currentIndex < allFonts.length - 1) {
           replacementFont = allFonts[currentIndex + 1]
         } else if (currentIndex > 0) {
           replacementFont = allFonts[currentIndex - 1]
