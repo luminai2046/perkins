@@ -9,16 +9,25 @@ function App() {
   
   // Load saved settings from localStorage
   const loadSettings = () => {
-    const savedFont = localStorage.getItem('perkins-selectedFont') || 'Arial'
+    const savedFontName = localStorage.getItem('perkins-selectedFont') || 'Georgia'
+    const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]').map(font => ({
+      ...font,
+      uploadTime: font.uploadTime || 0
+    }))
+    
+    // Validate that saved font exists in available fonts
+    const availableFonts = ['Georgia', ...savedFonts.map(f => f.name)]
+    const savedFont = availableFonts.includes(savedFontName) ? savedFontName : 'Georgia'
     const savedFontSize = parseInt(localStorage.getItem('perkins-fontSize')) || 14
     const savedLineHeight = parseFloat(localStorage.getItem('perkins-lineHeight')) || 1.7
     const savedLetterSpacing = parseFloat(localStorage.getItem('perkins-letterSpacing')) || 0
     const savedFontWeight = localStorage.getItem('perkins-fontWeight') || 'normal'
     const savedFontStyle = localStorage.getItem('perkins-fontStyle') || 'normal'
     const savedPadding = parseInt(localStorage.getItem('perkins-padding')) || 72
+    const savedPaddingUp = parseInt(localStorage.getItem('perkins-paddingUp')) || savedPadding
+    const savedPaddingLeftRight = parseInt(localStorage.getItem('perkins-paddingLeftRight')) || savedPadding
     const savedBackground = localStorage.getItem('perkins-selectedBackground') || '#f3f4f6'
     const savedText = localStorage.getItem('perkins-text') || defaultText
-    const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]')
     const savedBackgrounds = JSON.parse(localStorage.getItem('perkins-uploadedBackgrounds') || '[]')
     
     return {
@@ -29,6 +38,8 @@ function App() {
       fontWeight: savedFontWeight,
       fontStyle: savedFontStyle,
       padding: savedPadding,
+      paddingUp: savedPaddingUp,
+      paddingLeftRight: savedPaddingLeftRight,
       selectedBackground: savedBackground,
       text: savedText,
       uploadedFonts: savedFonts,
@@ -40,12 +51,15 @@ function App() {
   
   const [text, setText] = useState(savedSettings.text)
   const [selectedFont, setSelectedFont] = useState(savedSettings.selectedFont)
-  const [fontSize, setFontSize] = useState(savedSettings.fontSize)
+  
+    const [fontSize, setFontSize] = useState(savedSettings.fontSize)
   const [lineHeight, setLineHeight] = useState(savedSettings.lineHeight)
   const [letterSpacing, setLetterSpacing] = useState(savedSettings.letterSpacing)
   const [fontWeight, setFontWeight] = useState(savedSettings.fontWeight)
   const [fontStyle, setFontStyle] = useState(savedSettings.fontStyle)
   const [padding, setPadding] = useState(savedSettings.padding)
+  const [paddingUp, setPaddingUp] = useState(savedSettings.paddingUp)
+  const [paddingLeftRight, setPaddingLeftRight] = useState(savedSettings.paddingLeftRight)
   const [selectedBackground, setSelectedBackground] = useState(savedSettings.selectedBackground)
   const [uploadedFonts, setUploadedFonts] = useState(savedSettings.uploadedFonts)
   const [uploadedBackgrounds, setUploadedBackgrounds] = useState(savedSettings.uploadedBackgrounds)
@@ -53,7 +67,28 @@ function App() {
   const [showBackgroundUpload, setShowBackgroundUpload] = useState(false)
   const [isTextFocused, setIsTextFocused] = useState(false)
   const [hasUserInput, setHasUserInput] = useState(false)
+  const [showFontDropdown, setShowFontDropdown] = useState(false)
+  const [showWeightDropdown, setShowWeightDropdown] = useState(false)
+  const [showStyleDropdown, setShowStyleDropdown] = useState(false)
   
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showFontDropdown && !event.target.closest('.font-dropdown-container')) {
+        setShowFontDropdown(false)
+      }
+      if (showWeightDropdown && !event.target.closest('.weight-dropdown-container')) {
+        setShowWeightDropdown(false)
+      }
+      if (showStyleDropdown && !event.target.closest('.style-dropdown-container')) {
+        setShowStyleDropdown(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showFontDropdown, showWeightDropdown, showStyleDropdown])
+
   // Save settings to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('perkins-selectedFont', selectedFont)
@@ -63,11 +98,13 @@ function App() {
     localStorage.setItem('perkins-fontWeight', fontWeight)
     localStorage.setItem('perkins-fontStyle', fontStyle)
     localStorage.setItem('perkins-padding', padding.toString())
+    localStorage.setItem('perkins-paddingUp', paddingUp.toString())
+    localStorage.setItem('perkins-paddingLeftRight', paddingLeftRight.toString())
     localStorage.setItem('perkins-selectedBackground', selectedBackground)
     localStorage.setItem('perkins-text', text)
     localStorage.setItem('perkins-uploadedFonts', JSON.stringify(uploadedFonts))
     localStorage.setItem('perkins-uploadedBackgrounds', JSON.stringify(uploadedBackgrounds))
-  }, [selectedFont, fontSize, lineHeight, letterSpacing, fontWeight, fontStyle, padding, selectedBackground, text, uploadedFonts, uploadedBackgrounds])
+  }, [selectedFont, fontSize, lineHeight, letterSpacing, fontWeight, fontStyle, padding, paddingUp, paddingLeftRight, selectedBackground, text, uploadedFonts, uploadedBackgrounds])
   
   // Handle text focus and blur events
   const handleTextFocus = () => {
@@ -96,11 +133,16 @@ function App() {
   
   // Load fonts from localStorage on mount
   useEffect(() => {
-    const savedFonts = JSON.parse(localStorage.getItem('perkins-uploadedFonts') || '[]')
-    savedFonts.forEach(font => {
+    // Use the same font data that was loaded in savedSettings
+    const fontsToLoad = savedSettings.uploadedFonts
+    fontsToLoad.forEach(font => {
       const fontFace = new FontFace(font.name, `url(${font.url})`)
       fontFace.load().then(() => {
         document.fonts.add(fontFace)
+        // Force canvas re-render after font loads
+        setTimeout(() => {
+          renderCanvas()
+        }, 100)
       }).catch(err => {
         console.warn('Failed to load font:', font.name, err)
       })
@@ -122,7 +164,7 @@ function App() {
 
   useEffect(() => {
     renderCanvas()
-  }, [text, selectedFont, fontSize, lineHeight, letterSpacing, fontWeight, fontStyle, padding, selectedBackground])
+  }, [text, selectedFont, fontSize, lineHeight, letterSpacing, fontWeight, fontStyle, padding, paddingUp, paddingLeftRight, selectedBackground])
 
   const renderCanvas = () => {
     const canvas = canvasRef.current
@@ -210,24 +252,24 @@ function App() {
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
     
-    const maxWidth = width - (padding * 2)
+    const maxWidth = width - (paddingLeftRight * 2)
     const lineHeightPx = fontSize * 4 * lineHeight
     const letterSpacingPx = letterSpacing * 4
     
     const lines = wrapText(ctx, text, maxWidth, letterSpacingPx)
-    let y = padding
+    let y = paddingUp
     
     lines.forEach(line => {
       if (letterSpacingPx > 0) {
         // Render with letter spacing
-        let x = padding
+        let x = paddingLeftRight
         for (let i = 0; i < line.length; i++) {
           ctx.fillText(line[i], x, y)
           x += ctx.measureText(line[i]).width + letterSpacingPx
         }
       } else {
         // Render normally for better performance
-        ctx.fillText(line, padding, y)
+        ctx.fillText(line, paddingLeftRight, y)
       }
       y += lineHeightPx
     })
@@ -416,15 +458,34 @@ function App() {
         const fontUrl = URL.createObjectURL(file)
         const fontName = file.name.replace(/\.[^/.]+$/, '')
         
-        // Add to state immediately
-        setUploadedFonts(prev => [...prev, { name: fontName, url: fontUrl }])
+        // Add to state immediately with timestamp
+        setUploadedFonts(prev => [...prev, { name: fontName, url: fontUrl, uploadTime: Date.now() }])
         
-        // Try to load font safely
+        // Try to load font with proper error handling and loading detection
         try {
           const fontFace = new FontFace(fontName, `url(${fontUrl})`)
-          document.fonts.add(fontFace)
+          
+          // Load the font and then add it to document
+          fontFace.load().then(() => {
+            document.fonts.add(fontFace)
+            console.log('Font loaded successfully:', fontName)
+            
+            // Force canvas re-render to apply the new font
+            setTimeout(() => {
+              renderCanvas()
+            }, 100)
+          }).catch(error => {
+            console.warn('Font loading failed:', fontName, error)
+            
+            // Try to add anyway - sometimes fonts work even if load() fails
+            try {
+              document.fonts.add(fontFace)
+            } catch (addError) {
+              console.error('Font add failed:', fontName, addError)
+            }
+          })
         } catch (error) {
-          console.warn('Font loading failed:', fontName)
+          console.warn('Font creation failed:', fontName, error)
         }
       } catch (error) {
         console.error('Font upload error:', error)
@@ -449,7 +510,27 @@ function App() {
   }
 
   const deleteFont = (fontName) => {
-    setUploadedFonts(prev => prev.filter(font => font.name !== fontName))
+    setUploadedFonts(prev => {
+      const newFonts = prev.filter(font => font.name !== fontName)
+      
+      // If the deleted font was selected, find a replacement
+      if (selectedFont === fontName) {
+        const allFonts = ['Arial', 'Times New Roman', 'Georgia', 'Verdana', 'Courier New', ...newFonts.map(f => f.name)]
+        const currentIndex = allFonts.indexOf(fontName)
+        
+        // Try next font, then previous font, then default to Arial
+        let replacementFont = 'Arial'
+        if (currentIndex < allFonts.length - 1) {
+          replacementFont = allFonts[currentIndex + 1]
+        } else if (currentIndex > 0) {
+          replacementFont = allFonts[currentIndex - 1]
+        }
+        
+        setSelectedFont(replacementFont)
+      }
+      
+      return newFonts
+    })
   }
 
   const deleteBackground = (bgName) => {
@@ -497,40 +578,85 @@ function App() {
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-sm font-medium">Fonts</span>
-                <button
-                  onClick={() => setShowFontUpload(!showFontUpload)}
-                  className="p-1.5 rounded hover:bg-gray-100 transition-colors text-sm font-medium"
-                >
-                  +
-                </button>
+                <div className="flex items-center gap-2">
+                  {showFontUpload && (
+                    <input
+                      type="file"
+                      accept=".ttf,.otf,.woff,.woff2"
+                      multiple
+                      onChange={handleFontUpload}
+                      className="text-sm"
+                    />
+                  )}
+                  <button
+                    onClick={() => setShowFontUpload(!showFontUpload)}
+                    className="p-1.5 rounded hover:bg-gray-100 transition-colors text-sm font-medium"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
-              {showFontUpload && (
-                <div className="mb-3 p-2 border border-gray-200 rounded-lg">
-                  <input
-                    type="file"
-                    accept=".ttf,.otf,.woff,.woff2"
-                    multiple
-                    onChange={handleFontUpload}
-                    className="text-sm"
-                  />
+              <div className="relative font-dropdown-container">
+                <div
+                  className="w-full p-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer bg-white"
+                  onClick={() => setShowFontDropdown(!showFontDropdown)}
+                >
+                  <div className="flex items-center">
+                    <span>{selectedFont}</span>
+                  </div>
                 </div>
-              )}
-
-              <select
-                value={selectedFont}
-                onChange={(e) => setSelectedFont(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="Arial">Arial</option>
-                <option value="Times New Roman">Times New Roman</option>
-                <option value="Georgia">Georgia</option>
-                <option value="Verdana">Verdana</option>
-                <option value="Courier New">Courier New</option>
-                {uploadedFonts.map(font => (
-                  <option key={font.name} value={font.name}>{font.name}</option>
-                ))}
-              </select>
+                
+                {showFontDropdown && (
+                  <div className="absolute z-10 w-full mt-1 border border-gray-300 rounded-lg bg-white shadow-lg">
+                    <div className="max-h-40 overflow-y-auto">
+                      {['Georgia'].map(font => (
+                        <div
+                          key={font}
+                          className={`px-3 py-1 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                            selectedFont === font ? 'bg-blue-50 text-blue-600' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedFont(font)
+                            setShowFontDropdown(false)
+                          }}
+                        >
+                          <span>{font}</span>
+                        </div>
+                      ))}
+                      {uploadedFonts
+                    .sort((a, b) => {
+                      const timeA = a.uploadTime || 0
+                      const timeB = b.uploadTime || 0
+                      return timeB - timeA
+                    })
+                    .map(font => (
+                        <div
+                          key={font.name}
+                          className={`px-3 py-1 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                            selectedFont === font.name ? 'bg-blue-50 text-blue-600' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedFont(font.name)
+                            setShowFontDropdown(false)
+                          }}
+                        >
+                          <span>{font.name}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteFont(font.name)
+                            }}
+                            className="text-red-500 hover:text-red-700 font-bold text-sm px-2 py-1 rounded hover:bg-red-50"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Typography Controls (Row) */}
@@ -541,44 +667,95 @@ function App() {
                     <label className="text-sm font-medium text-gray-700">Size</label>
                     <span className="text-sm text-gray-400">{fontSize}px</span>
                   </div>
-                  <input
-                    type="range"
-                    min="8"
-                    max="32"
-                    value={fontSize}
-                    onChange={(e) => setFontSize(Number(e.target.value))}
-                    className="w-full"
-                  />
+                  <div className="mt-4">
+                    <input
+                      type="range"
+                      min="8"
+                      max="32"
+                      value={fontSize}
+                      onChange={(e) => setFontSize(Number(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
-                  <select
-                    value={fontWeight}
-                    onChange={(e) => setFontWeight(e.target.value)}
-                    className="w-full p-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="bold">Bold</option>
-                    <option value="light">Light</option>
-                  </select>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-gray-700">Weight</label>
+                  </div>
+                  <div className="relative weight-dropdown-container">
+                    <div
+                      className="w-full p-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer bg-white"
+                      onClick={() => setShowWeightDropdown(!showWeightDropdown)}
+                    >
+                      <div className="flex items-center">
+                        <span className="capitalize">{fontWeight}</span>
+                      </div>
+                    </div>
+                    
+                    {showWeightDropdown && (
+                      <div className="absolute z-10 w-full mt-1 border border-gray-300 rounded-lg bg-white shadow-lg">
+                        <div className="max-h-40 overflow-y-auto">
+                          {['normal', 'bold', 'light'].map(weight => (
+                            <div
+                              key={weight}
+                              className={`px-3 py-1 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                                fontWeight === weight ? 'bg-blue-50 text-blue-600' : ''
+                              }`}
+                              onClick={() => {
+                                setFontWeight(weight)
+                                setShowWeightDropdown(false)
+                              }}
+                            >
+                              <span className="capitalize">{weight}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Style</label>
-                  <select
-                    value={fontStyle}
-                    onChange={(e) => setFontStyle(e.target.value)}
-                    className="w-full p-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="italic">Italic</option>
-                  </select>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-gray-700">Style</label>
+                  </div>
+                  <div className="relative style-dropdown-container">
+                    <div
+                      className="w-full p-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer bg-white"
+                      onClick={() => setShowStyleDropdown(!showStyleDropdown)}
+                    >
+                      <div className="flex items-center">
+                        <span className="capitalize">{fontStyle}</span>
+                      </div>
+                    </div>
+                    
+                    {showStyleDropdown && (
+                      <div className="absolute z-10 w-full mt-1 border border-gray-300 rounded-lg bg-white shadow-lg">
+                        <div className="max-h-40 overflow-y-auto">
+                          {['normal', 'italic'].map(style => (
+                            <div
+                              key={style}
+                              className={`px-3 py-1 hover:bg-gray-50 cursor-pointer flex justify-between items-center ${
+                                fontStyle === style ? 'bg-blue-50 text-blue-600' : ''
+                              }`}
+                              onClick={() => {
+                                setFontStyle(style)
+                                setShowStyleDropdown(false)
+                              }}
+                            >
+                              <span className="capitalize">{style}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Spacing Controls (Row) */}
             <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <label className="text-sm font-medium text-gray-700">Line Height</label>
@@ -611,15 +788,29 @@ function App() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <label className="text-sm font-medium text-gray-700">Padding</label>
-                    <span className="text-sm text-gray-400">{padding}px</span>
+                    <label className="text-sm font-medium text-gray-700">Up</label>
+                    <span className="text-sm text-gray-400">{paddingUp}px</span>
                   </div>
                   <input
                     type="range"
                     min="10"
                     max="150"
-                    value={padding}
-                    onChange={(e) => setPadding(Number(e.target.value))}
+                    value={paddingUp}
+                    onChange={(e) => setPaddingUp(Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-sm font-medium text-gray-700">Left/Right</label>
+                    <span className="text-sm text-gray-400">{paddingLeftRight}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="10"
+                    max="150"
+                    value={paddingLeftRight}
+                    onChange={(e) => setPaddingLeftRight(Number(e.target.value))}
                     className="w-full"
                   />
                 </div>
