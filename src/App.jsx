@@ -323,10 +323,19 @@ function App() {
         {/* Left: Preview (61.8%) */}
         <div className="w-[61.8%] p-3">
           <div className="h-full bg-white rounded-lg shadow-sm p-4 relative">
-            <div className="flex-1 border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50">
+            <div className="flex-1 border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50 relative">
               <canvas
                 ref={canvasRef}
-                className="w-full h-full object-contain"
+                style={{ 
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  width: 'auto',
+                  height: 'auto'
+                }}
               />
             </div>
             <button
