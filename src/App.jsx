@@ -431,10 +431,10 @@ function App() {
         {/* Left: Preview (61.8%) */}
         <div className="w-[61.8%] p-3">
           <div className="h-full bg-white rounded-lg shadow-sm p-4 relative">
-            <div className="h-full border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50 relative">
+            <div className="h-full border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50 relative flex items-center justify-center">
               <canvas
                 ref={canvasRef}
-                className="absolute inset-0 w-full h-full"
+                className="absolute"
               />
             </div>
             <button
