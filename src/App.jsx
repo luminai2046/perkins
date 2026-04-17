@@ -132,26 +132,50 @@ function App() {
     
     // For preview: use container size
     const container = canvas.parentElement
-    const displayWidth = container.clientWidth
-    const displayHeight = container.clientHeight
+    const containerWidth = container.clientWidth
+    const containerHeight = container.clientHeight
+    
+    // Calculate 3:4 aspect ratio dimensions that fit in container
+    let previewWidth, previewHeight
+    const containerRatio = containerWidth / containerHeight
+    const targetRatio = 3 / 4 // 3:4 ratio (width:height)
+    
+    if (containerRatio > targetRatio) {
+      // Container is wider than target ratio, use height as limiting factor
+      previewHeight = containerHeight
+      previewWidth = containerHeight * targetRatio
+    } else {
+      // Container is taller than target ratio, use width as limiting factor
+      previewWidth = containerWidth
+      previewHeight = containerWidth / targetRatio
+    }
+    
+    // Use higher resolution for sharper text (2x for retina displays)
+    const resolutionScale = 2
+    const canvasWidth = previewWidth * resolutionScale
+    const canvasHeight = previewHeight * resolutionScale
+    
+    // Set canvas to high resolution
+    canvas.width = canvasWidth
+    canvas.height = canvasHeight
+    
+    // Scale canvas to fit container
+    canvas.style.width = previewWidth + 'px'
+    canvas.style.height = previewHeight + 'px'
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight)
     
     // For export: keep 1080x1440
     const exportWidth = 1080
     const exportHeight = 1440
     
-    // Set canvas to display size for preview
-    canvas.width = displayWidth
-    canvas.height = displayHeight
-    
-    // Clear canvas
-    ctx.clearRect(0, 0, displayWidth, displayHeight)
-    
-    // Scale factor for rendering
-    const scale = Math.min(displayWidth / exportWidth, displayHeight / exportHeight)
+    // Scale factor for rendering (from export resolution to high-res preview)
+    const scale = Math.min(canvasWidth / exportWidth, canvasHeight / exportHeight)
     const scaledWidth = exportWidth * scale
     const scaledHeight = exportHeight * scale
-    const offsetX = (displayWidth - scaledWidth) / 2
-    const offsetY = (displayHeight - scaledHeight) / 2
+    const offsetX = (canvasWidth - scaledWidth) / 2
+    const offsetY = (canvasHeight - scaledHeight) / 2
     
     // Save context state
     ctx.save()
@@ -407,10 +431,10 @@ function App() {
         {/* Left: Preview (61.8%) */}
         <div className="w-[61.8%] p-3">
           <div className="h-full bg-white rounded-lg shadow-sm p-4 relative">
-            <div className="flex-1 border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50">
+            <div className="h-full border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50 relative">
               <canvas
                 ref={canvasRef}
-                className="w-full h-full"
+                className="absolute inset-0 w-full h-full"
               />
             </div>
             <button
