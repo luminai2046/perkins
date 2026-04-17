@@ -431,18 +431,17 @@ function App() {
         {/* Left: Preview (61.8%) */}
         <div className="w-[61.8%] p-3">
           <div className="h-full bg-white rounded-lg shadow-sm p-4 relative">
-            <div className="h-full border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50 relative flex items-center justify-center">
+            <div className="h-full overflow-hidden relative flex items-center justify-center rounded-lg">
               <canvas
                 ref={canvasRef}
-                className="absolute"
+                className="absolute rounded-lg"
               />
             </div>
             <button
               onClick={exportImage}
-              className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 transition-colors shadow-lg"
+              className="absolute bottom-4 right-4 px-3 py-1.5 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 transition-colors shadow-lg"
             >
-              <Download size={14} />
-              Export
+              Save
             </button>
           </div>
         </div>
@@ -458,7 +457,7 @@ function App() {
                 onChange={handleTextChange}
                 onFocus={handleTextFocus}
                 onBlur={handleTextBlur}
-                className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${text === defaultText && !isTextFocused ? 'text-gray-400' : 'text-gray-900'}`}
+                className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${text === defaultText && !isTextFocused ? 'text-gray-400 leading-relaxed' : 'text-gray-900'}`}
                 style={{ minHeight: '120px', maxHeight: '300px' }}
                 placeholder="Enter your text here..."
               />
@@ -467,15 +466,12 @@ function App() {
             {/* Font Selection */}
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex justify-between items-center mb-3">
-                <div className="flex items-center gap-2">
-                  <Type size={18} />
-                  <span className="text-sm font-medium">Fonts</span>
-                </div>
+                <span className="text-sm font-medium">Fonts</span>
                 <button
                   onClick={() => setShowFontUpload(!showFontUpload)}
-                  className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 rounded hover:bg-gray-100 transition-colors text-sm font-medium"
                 >
-                  <Upload size={14} />
+                  +
                 </button>
               </div>
 
@@ -513,7 +509,7 @@ function App() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <label className="text-sm font-medium text-gray-700">Size</label>
-                    <span className="text-xs text-gray-600">{fontSize}px</span>
+                    <span className="text-sm text-gray-400">{fontSize}px</span>
                   </div>
                   <input
                     type="range"
@@ -556,7 +552,7 @@ function App() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <label className="text-sm font-medium text-gray-700">Line Height</label>
-                    <span className="text-xs text-gray-600">{lineHeight}</span>
+                    <span className="text-sm text-gray-400">{lineHeight}</span>
                   </div>
                   <input
                     type="range"
@@ -571,7 +567,7 @@ function App() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <label className="text-sm font-medium text-gray-700">Letter Spacing</label>
-                    <span className="text-xs text-gray-600">{letterSpacing}px</span>
+                    <span className="text-sm text-gray-400">{letterSpacing}px</span>
                   </div>
                   <input
                     type="range"
@@ -586,7 +582,7 @@ function App() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <label className="text-sm font-medium text-gray-700">Padding</label>
-                    <span className="text-xs text-gray-600">{padding}px</span>
+                    <span className="text-sm text-gray-400">{padding}px</span>
                   </div>
                   <input
                     type="range"
@@ -603,15 +599,12 @@ function App() {
             {/* Background Selection */}
             <div className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex justify-between items-center mb-3">
-                <div className="flex items-center gap-2">
-                  <Palette size={18} />
-                  <span className="text-sm font-medium">Background</span>
-                </div>
+                <span className="text-sm font-medium">Background</span>
                 <button
                   onClick={() => setShowBackgroundUpload(!showBackgroundUpload)}
-                  className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 rounded hover:bg-gray-100 transition-colors text-sm font-medium"
                 >
-                  <Upload size={14} />
+                  +
                 </button>
               </div>
 
