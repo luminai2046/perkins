@@ -129,31 +129,55 @@ function App() {
     if (!canvas) return
     
     const ctx = canvas.getContext('2d')
-    const width = 1080
-    const height = 1440
     
-    canvas.width = width
-    canvas.height = height
+    // For preview: use container size
+    const container = canvas.parentElement
+    const displayWidth = container.clientWidth
+    const displayHeight = container.clientHeight
+    
+    // For export: keep 1080x1440
+    const exportWidth = 1080
+    const exportHeight = 1440
+    
+    // Set canvas to display size for preview
+    canvas.width = displayWidth
+    canvas.height = displayHeight
     
     // Clear canvas
-    ctx.clearRect(0, 0, width, height)
+    ctx.clearRect(0, 0, displayWidth, displayHeight)
+    
+    // Scale factor for rendering
+    const scale = Math.min(displayWidth / exportWidth, displayHeight / exportHeight)
+    const scaledWidth = exportWidth * scale
+    const scaledHeight = exportHeight * scale
+    const offsetX = (displayWidth - scaledWidth) / 2
+    const offsetY = (displayHeight - scaledHeight) / 2
+    
+    // Save context state
+    ctx.save()
+    
+    // Apply scaling for preview
+    ctx.translate(offsetX, offsetY)
+    ctx.scale(scale, scale)
     
     // Draw background
     if (selectedBackground.startsWith('#')) {
       ctx.fillStyle = selectedBackground
-      ctx.fillRect(0, 0, width, height)
+      ctx.fillRect(0, 0, exportWidth, exportHeight)
     } else {
       // Handle image background
       const img = new Image()
       img.onload = () => {
-        ctx.drawImage(img, 0, 0, width, height)
-        drawText(ctx, width, height)
+        ctx.drawImage(img, 0, 0, exportWidth, exportHeight)
+        drawText(ctx, exportWidth, exportHeight)
+        ctx.restore()
       }
       img.src = selectedBackground
       return
     }
     
-    drawText(ctx, width, height)
+    drawText(ctx, exportWidth, exportHeight)
+    ctx.restore()
   }
 
   const drawText = (ctx, width, height) => {
@@ -273,7 +297,67 @@ function App() {
   }
 
   const exportImage = () => {
-    const canvas = canvasRef.current
+    // Create a temporary canvas for export at full resolution
+    const exportCanvas = document.createElement('canvas')
+    const exportCtx = exportCanvas.getContext('2d')
+    
+    const exportWidth = 1080
+    const exportHeight = 1440
+    
+    exportCanvas.width = exportWidth
+    exportCanvas.height = exportHeight
+    
+    // Clear export canvas
+    exportCtx.clearRect(0, 0, exportWidth, exportHeight)
+    
+    // Draw background
+    if (selectedBackground.startsWith('#')) {
+      exportCtx.fillStyle = selectedBackground
+      exportCtx.fillRect(0, 0, exportWidth, exportHeight)
+    } else {
+      // Handle image background
+      const img = new Image()
+      img.onload = () => {
+        exportCtx.drawImage(img, 0, 0, exportWidth, exportHeight)
+        drawTextForExport(exportCtx, exportWidth, exportHeight)
+        downloadCanvas(exportCanvas)
+      }
+      img.src = selectedBackground
+      return
+    }
+    
+    drawTextForExport(exportCtx, exportWidth, exportHeight)
+    downloadCanvas(exportCanvas)
+  }
+  
+  const drawTextForExport = (ctx, width, height) => {
+    ctx.fillStyle = '#000000'
+    ctx.font = `${fontStyle} ${fontWeight} ${fontSize * 4}px ${selectedFont}`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+    
+    const maxWidth = width - (padding * 2)
+    const lineHeightPx = fontSize * 4 * lineHeight
+    const letterSpacingPx = letterSpacing * 4
+    
+    const lines = wrapText(ctx, text, maxWidth, letterSpacingPx)
+    let y = padding
+    
+    lines.forEach(line => {
+      if (letterSpacingPx > 0) {
+        let x = padding
+        for (let i = 0; i < line.length; i++) {
+          ctx.fillText(line[i], x, y)
+          x += ctx.measureText(line[i]).width + letterSpacingPx
+        }
+      } else {
+        ctx.fillText(line, padding, y)
+      }
+      y += lineHeightPx
+    })
+  }
+  
+  const downloadCanvas = (canvas) => {
     const link = document.createElement('a')
     link.download = 'perkins-export.png'
     link.href = canvas.toDataURL()
@@ -323,19 +407,10 @@ function App() {
         {/* Left: Preview (61.8%) */}
         <div className="w-[61.8%] p-3">
           <div className="h-full bg-white rounded-lg shadow-sm p-4 relative">
-            <div className="flex-1 border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50 relative">
+            <div className="flex-1 border border-black border-opacity-25 rounded-lg overflow-hidden bg-gray-50">
               <canvas
                 ref={canvasRef}
-                style={{ 
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  width: 'auto',
-                  height: 'auto'
-                }}
+                className="w-full h-full"
               />
             </div>
             <button
