@@ -65,14 +65,14 @@ function App() {
     // Validate that saved font exists in available fonts
     const availableFonts = ['Georgia', ...savedFontsMeta.map(f => f.name)]
     const savedFont = availableFonts.includes(savedFontName) ? savedFontName : 'Georgia'
-    const savedFontSize = parseInt(localStorage.getItem('perkins-fontSize')) || 14
-    const savedLineHeight = parseFloat(localStorage.getItem('perkins-lineHeight')) || 1.7
-    const savedLetterSpacing = parseFloat(localStorage.getItem('perkins-letterSpacing')) || 0
+    const savedFontSize = parseInt(localStorage.getItem('perkins-fontSize')) || 13
+    const savedLineHeight = parseFloat(localStorage.getItem('perkins-lineHeight')) || 1.8
+    const savedLetterSpacing = parseFloat(localStorage.getItem('perkins-letterSpacing')) || 0.5
     const savedFontWeight = localStorage.getItem('perkins-fontWeight') || 'normal'
     const savedFontStyle = localStorage.getItem('perkins-fontStyle') || 'normal'
-    const savedPadding = parseInt(localStorage.getItem('perkins-padding')) || 72
-    const savedPaddingUp = parseInt(localStorage.getItem('perkins-paddingUp')) || savedPadding
-    const savedPaddingLeftRight = parseInt(localStorage.getItem('perkins-paddingLeftRight')) || savedPadding
+    const savedPadding = parseInt(localStorage.getItem('perkins-padding')) || 88
+    const savedPaddingUp = parseInt(localStorage.getItem('perkins-paddingUp')) || 130
+    const savedPaddingLeftRight = parseInt(localStorage.getItem('perkins-paddingLeftRight')) || 88
     const savedBackground = localStorage.getItem('perkins-selectedBackground') || '#f3f4f6'
     const savedText = localStorage.getItem('perkins-text') || defaultText
     const savedBackgrounds = JSON.parse(localStorage.getItem('perkins-uploadedBackgrounds') || '[]')
@@ -408,8 +408,12 @@ function App() {
             let runStart = lastSpaceIndex
             while (runStart > 0 && currentLine[runStart - 1] === ' ') runStart--
 
+            const runLen = lastSpaceIndex - runStart + 1
             const left = currentLine.slice(0, runStart)
-            const right = currentLine.slice(runStart)
+            // Drop the single delimiter space that we wrap on, but preserve any extra
+            // consecutive spaces the user typed.
+            const preservedSpaces = runLen > 1 ? ' '.repeat(runLen - 1) : ''
+            const right = preservedSpaces + currentLine.slice(lastSpaceIndex + 1)
 
             lines.push(left)
             currentLine = right
