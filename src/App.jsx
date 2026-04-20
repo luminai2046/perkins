@@ -683,7 +683,7 @@ function App() {
                 onChange={handleTextChange}
                 onFocus={handleTextFocus}
                 onBlur={handleTextBlur}
-                className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${text === defaultText && !isTextFocused ? 'text-gray-400' : 'text-gray-900'}`}
+                className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${text === defaultText && !isTextFocused ? 'text-gray-400 leading-[1.2]' : 'text-gray-900'}`}
                 style={{ minHeight: '80px', maxHeight: '300px' }}
                 placeholder="Enter your text here..."
               />
