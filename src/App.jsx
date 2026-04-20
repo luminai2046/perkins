@@ -674,26 +674,26 @@ function App() {
 
         {/* Right: Controls (38.2%) */}
         <div className="w-[38.2%] p-3 overflow-y-auto">
-          <div className="space-y-4 max-w-2xl mx-auto">
+          <div className="space-y-3 max-w-2xl mx-auto">
             
             {/* Text Input */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="bg-white rounded-lg shadow-sm p-3">
               <textarea
                 value={text}
                 onChange={handleTextChange}
                 onFocus={handleTextFocus}
                 onBlur={handleTextBlur}
-                className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${text === defaultText && !isTextFocused ? 'text-gray-400 leading-relaxed' : 'text-gray-900'}`}
-                style={{ minHeight: '120px', maxHeight: '300px' }}
+                className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${text === defaultText && !isTextFocused ? 'text-gray-400' : 'text-gray-900'}`}
+                style={{ minHeight: '80px', maxHeight: '300px' }}
                 placeholder="Enter your text here..."
               />
             </div>
 
             {/* Font Selection */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="flex justify-between items-center mb-3">
+            <div className="bg-white rounded-lg shadow-sm p-3">
+              <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Fonts</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   {showFontUpload && (
                     <input
                       type="file"
@@ -775,10 +775,10 @@ function App() {
             </div>
 
             {/* Typography Controls (Row) */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white rounded-lg shadow-sm p-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1 mb-1">
                     <label className="text-sm font-medium text-gray-700">Size</label>
                     <span className="text-sm text-gray-400">{fontSize}px</span>
                   </div>
@@ -794,7 +794,7 @@ function App() {
                   </div>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1 mb-1">
                     <label className="text-sm font-medium text-gray-700">Weight</label>
                   </div>
                   <div className="relative weight-dropdown-container">
@@ -830,7 +830,7 @@ function App() {
                   </div>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-1 mb-1">
                     <label className="text-sm font-medium text-gray-700">Style</label>
                   </div>
                   <div className="relative style-dropdown-container">
@@ -869,8 +869,8 @@ function App() {
             </div>
 
             {/* Spacing Controls (Row) */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white rounded-lg shadow-sm p-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <label className="text-sm font-medium text-gray-700">Line Height</label>
